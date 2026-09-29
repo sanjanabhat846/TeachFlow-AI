@@ -1,0 +1,11 @@
+{
+  "flow_id": "order_food",
+  "success": true,
+  "completed_steps": 4,
+  "total_steps": 5,
+  "step": 4,
+  "message": "Successfully added 3 burgers to cart",
+  "requires_approval": true,
+  "approval_reason": "Payment",
+  "error": null
+}

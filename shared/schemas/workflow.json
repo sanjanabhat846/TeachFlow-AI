@@ -1,0 +1,58 @@
+{
+  "flow_id": "order_food",
+  "intent": "ORDER_FOOD",
+  "description": "Searches for an item, selects it, sets quantity, and adds to cart",
+  "parameters": {
+    "item": "burger",
+    "quantity": 3
+  },
+  "steps": [
+    {
+      "step_index": 1,
+      "action": "type",
+      "target": {
+        "role": "edit_text",
+        "resource_id": "search_box"
+      },
+      "value": "{{item}}",
+      "requires_approval": false
+    },
+    {
+      "step_index": 2,
+      "action": "tap",
+      "target": {
+        "role": "product_item",
+        "text": "{{item}}"
+      },
+      "requires_approval": false
+    },
+    {
+      "step_index": 3,
+      "action": "set_quantity",
+      "target": {
+        "role": "quantity_picker"
+      },
+      "value": "{{quantity}}",
+      "requires_approval": false
+    },
+    {
+      "step_index": 4,
+      "action": "tap",
+      "target": {
+        "role": "button",
+        "text": "Add to Cart"
+      },
+      "requires_approval": false
+    },
+    {
+      "step_index": 5,
+      "action": "tap",
+      "target": {
+        "role": "button",
+        "text": "Checkout & Pay"
+      },
+      "requires_approval": true,
+      "approval_reason": "Payment / Sensitive transaction checkpoint"
+    }
+  ]
+}
