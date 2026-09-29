@@ -20,6 +20,12 @@ TeachFlow-AI/
 
 ---
 
+## Backend API Contract
+
+The backend routes, JSON request and response examples, required fields, errors, and
+safety behavior are documented in [docs/api_contract.md](docs/api_contract.md).
+Backend setup and run instructions are in [backend/README.md](backend/README.md).
+
 ## Branches
 
 - `feat/android-frontend` (Android Application & Frontend Integration)
