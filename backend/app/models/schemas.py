@@ -62,6 +62,23 @@ class ExecutionResult(BaseModel):
     error: str | None = None
 
 
+class UiMatchResponse(BaseModel):
+    """Result of matching a semantic target against the current UI tree."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    matched: bool
+    node_id: str | None = None
+    confidence: float = 0.0
+
+
+class UiRecoveryResponse(UiMatchResponse):
+    """Result of re-matching a target after a UI change."""
+
+    requires_clarification: bool
+    reason: str | None = None
+
+
 class SafetyCheckResult(BaseModel):
     """Whether a workflow requires human approval before execution."""
 
@@ -129,6 +146,14 @@ class LearnWorkflowResponse(BaseModel):
     message: str
 
 
+class WorkflowSynthesisRequest(BaseModel):
+    """Request payload for synthesizing a workflow from a demonstration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    demonstration: list[str]
+
+
 class FlowMatchRequest(BaseModel):
     """Natural-language command for workflow lookup."""
 
@@ -162,6 +187,23 @@ class ExecutionPlanResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     actions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SafetyCheckRequest(BaseModel):
+    """Semantic actions to inspect before execution."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    actions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class UiMatchRequest(BaseModel):
+    """Semantic target and current Android UI tree."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target: dict[str, Any]
+    ui_tree: UiTree
 
 
 class UiTreeRequest(BaseModel):
