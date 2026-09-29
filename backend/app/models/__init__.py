@@ -1,0 +1,41 @@
+"""Shared data models for the TeachFlow AI backend."""
+
+from .schemas import (
+    ExecutionPlanRequest,
+    ExecutionPlanResponse,
+    ExecutionResult,
+    FlowMatchRequest,
+    FlowMatchResponse,
+    IntentRequest,
+    IntentResponse,
+    LearnWorkflowRequest,
+    LearnWorkflowResponse,
+    ParameterExtractionRequest,
+    ParameterExtractionResponse,
+    SafetyCheckResult,
+    UiElement,
+    UiTree,
+    UiTreeRequest,
+    WorkflowDefinition,
+    WorkflowStep,
+)
+
+__all__ = [
+    "ExecutionPlanRequest",
+    "ExecutionPlanResponse",
+    "ExecutionResult",
+    "FlowMatchRequest",
+    "FlowMatchResponse",
+    "IntentRequest",
+    "IntentResponse",
+    "LearnWorkflowRequest",
+    "LearnWorkflowResponse",
+    "ParameterExtractionRequest",
+    "ParameterExtractionResponse",
+    "SafetyCheckResult",
+    "UiElement",
+    "UiTree",
+    "UiTreeRequest",
+    "WorkflowDefinition",
+    "WorkflowStep",
+]
