@@ -75,8 +75,18 @@ object SemanticNodeFinder {
     }
 
     fun scoreNodeMatch(node: AccessibilityNodeInfo, target: TargetSpec): MatchScore {
+        if (!node.isEnabled) {
+            return MatchScore(0f, "Disabled node")
+        }
+        if (target.clickable == true && !hasClickableAncestor(node)) {
+            return MatchScore(0f, "Node is not clickable")
+        }
         val element = UIHierarchyReader.createUIElement(node, "temp_node")
-        return scoreElementMatch(element, target)
+        val score = scoreElementMatch(element, target)
+        if (target.clickable == true && hasClickableAncestor(node) && score.score > 0f) {
+            return MatchScore((score.score + 0.05f).coerceAtMost(1f), score.reason)
+        }
+        return score
     }
 
     fun scoreElementMatch(element: UIElement, target: TargetSpec): MatchScore {
@@ -84,6 +94,7 @@ object SemanticNodeFinder {
         val nodeText = element.text?.lowercase() ?: ""
         val nodeDesc = element.contentDescription?.lowercase() ?: ""
         val nodeRole = element.role.lowercase()
+        val nodeClass = element.className.lowercase()
 
         val targetResId = target.resourceId?.lowercase() ?: ""
         val targetText = target.text?.lowercase() ?: ""
@@ -91,25 +102,29 @@ object SemanticNodeFinder {
         val targetRole = target.role?.lowercase() ?: ""
         val targetClass = target.className?.lowercase() ?: ""
 
-        if (!node.isEnabled) {
+        if (!element.enabled) {
             return MatchScore(0f, "Disabled node")
         }
-        if (target.clickable == true && !hasClickableAncestor(node)) {
+        if (target.clickable == true && !element.clickable) {
             return MatchScore(0f, "Node is not clickable")
         }
 
         var score = 0f
 
-        // Resource IDs are useful anchors but remain one of several semantic signals.
-        if (targetResId.isNotBlank() && nodeResId.isNotBlank()) {
+        val isExactResId = targetResId.isNotBlank() && nodeResId.isNotBlank() && (
+            nodeResId == targetResId ||
+            nodeResId.substringAfter(":id/").substringAfter("id/") == targetResId ||
+            nodeResId.endsWith("/$targetResId")
+        )
+        val resIdMatched = isExactResId || (targetResId.isNotBlank() && nodeResId.isNotBlank() && (nodeResId.contains(targetResId) || targetResId.contains(nodeResId)))
+        if (resIdMatched) {
             score += when {
-                nodeResId == targetResId -> 0.5f
-                nodeResId.endsWith(targetResId) || targetResId.endsWith(nodeResId) -> 0.35f
-                else -> 0f
+                isExactResId -> 0.7f
+                else -> 0.35f
             }
         }
 
-        if (targetClass.isNotBlank() && nodeClass.lowercase() == targetClass) {
+        if (targetClass.isNotBlank() && nodeClass == targetClass) {
             score += 0.1f
         }
 
@@ -124,20 +139,21 @@ object SemanticNodeFinder {
             score += 0.7f * labelSimilarity
         }
 
-        val nodeContext = UIHierarchyReader.contextFor(node).lowercase()
+        val nodeContext = element.context.lowercase()
         val contextSimilarity = semanticSimilarity(target.context.orEmpty().lowercase(), nodeContext)
         if (contextSimilarity > 0f) {
             score += 0.2f * contextSimilarity
         }
 
-        if (target.clickable == true && hasClickableAncestor(node)) {
+        if (target.clickable == true && element.clickable) {
             score += 0.05f
         }
 
         val reason = when {
             textSimilarity == 1f -> "Exact text match"
             descriptionSimilarity == 1f -> "Exact content description match"
-            targetResId.isNotBlank() && score >= 0.5f -> "Resource ID and semantic match"
+            resIdMatched && score >= 0.5f -> "Resource ID match"
+            textSimilarity > 0f -> "Normalized text match"
             labelSimilarity > 0f && contextSimilarity > 0f -> "Label and hierarchy context match"
             labelSimilarity > 0f -> "Semantic label variation match"
             else -> "No match"

@@ -118,7 +118,7 @@ object TeachFlowApiClient {
     ): Result<Workflow> = withContext(Dispatchers.IO) {
         if (NetworkConfig.useMockBackend.value) {
             return@withContext runCatching {
-                MockBackendEngine.learnWorkflow(prompt, capturedActions)
+                MockBackendEngine.learnWorkflow(context = null, prompt = prompt, capturedActions = capturedActions)
             }
         }
 
