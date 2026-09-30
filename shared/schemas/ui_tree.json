@@ -13,7 +13,8 @@
       "enabled": true,
       "editable": true,
       "scrollable": false,
-      "bounds": "[0,100][1080,200]"
+      "bounds": "[0,100][1080,200]",
+      "context": "Food ordering > Search"
     },
     {
       "id": "node_2",
@@ -26,7 +27,8 @@
       "enabled": true,
       "editable": false,
       "scrollable": false,
-      "bounds": "[100,500][980,620]"
+      "bounds": "[100,500][980,620]",
+      "context": "Food ordering > Cart actions"
     }
   ]
 }

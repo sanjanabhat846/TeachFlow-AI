@@ -69,8 +69,21 @@ object UIHierarchyReader {
             enabled = node.isEnabled,
             editable = node.isEditable,
             scrollable = node.isScrollable,
-            bounds = boundsStr
+            bounds = boundsStr,
+            context = contextFor(node)
         )
+    }
+
+    fun contextFor(node: AccessibilityNodeInfo): String {
+        val labels = mutableListOf<String>()
+        var ancestor = node.parent
+        while (ancestor != null && labels.size < 3) {
+            val label = ancestor.text?.toString()?.takeIf { it.isNotBlank() }
+                ?: ancestor.contentDescription?.toString()?.takeIf { it.isNotBlank() }
+            if (label != null) labels.add(label)
+            ancestor = ancestor.parent
+        }
+        return labels.asReversed().joinToString(" > ")
     }
 
     private fun isMeaningfulElement(element: UIElement): Boolean {

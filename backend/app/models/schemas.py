@@ -23,6 +23,7 @@ class UiElement(BaseModel):
     editable: bool = False
     scrollable: bool = False
     bounds: str | None = None
+    context: str = ""
 
 
 class UiTree(BaseModel):

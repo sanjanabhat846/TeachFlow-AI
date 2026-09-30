@@ -17,7 +17,7 @@ object SemanticNodeFinder {
     fun findBestMatch(
         rootNode: AccessibilityNodeInfo?,
         target: TargetSpec?,
-        minConfidence: Float = 0.5f
+        minConfidence: Float = 0.6f
     ): MatchResult {
         if (rootNode == null || target == null) {
             return MatchResult(null, null, 0f, "Root node or target is null")
@@ -26,9 +26,12 @@ object SemanticNodeFinder {
         val candidates = mutableListOf<Pair<AccessibilityNodeInfo, MatchScore>>()
         collectCandidates(rootNode, target, candidates)
 
-        val bestCandidate = candidates.maxByOrNull { it.second.score }
+        val rankedCandidates = candidates.sortedByDescending { it.second.score }
+        val bestCandidate = rankedCandidates.firstOrNull()
+        val ambiguous = bestCandidate != null && rankedCandidates.size > 1 &&
+            bestCandidate.second.score - rankedCandidates[1].second.score < AMBIGUITY_MARGIN
 
-        return if (bestCandidate != null && bestCandidate.second.score >= minConfidence) {
+        return if (bestCandidate != null && !ambiguous && bestCandidate.second.score >= minConfidence) {
             val element = UIHierarchyReader.createUIElement(bestCandidate.first, "matched_node")
             MatchResult(
                 node = bestCandidate.first,
@@ -41,7 +44,10 @@ object SemanticNodeFinder {
                 node = null,
                 element = null,
                 confidence = bestCandidate?.second?.score ?: 0f,
-                matchReason = "No candidate exceeded confidence threshold $minConfidence"
+                matchReason = when {
+                    ambiguous -> "Multiple similarly matching UI elements are ambiguous"
+                    else -> "No candidate exceeded confidence threshold $minConfidence"
+                }
             )
         }
     }
@@ -81,63 +87,75 @@ object SemanticNodeFinder {
         val targetRole = target.role?.lowercase() ?: ""
         val targetClass = target.className?.lowercase() ?: ""
 
-        if (target.enabled == true && !node.isEnabled) {
+        if (!node.isEnabled) {
             return MatchScore(0f, "Disabled node")
         }
         if (target.clickable == true && !hasClickableAncestor(node)) {
             return MatchScore(0f, "Node is not clickable")
         }
 
-        // 1. Resource ID exact or endsWith match
+        var score = 0f
+
+        // Resource IDs are useful anchors but remain one of several semantic signals.
         if (targetResId.isNotBlank() && nodeResId.isNotBlank()) {
-            if (nodeResId == targetResId || nodeResId.endsWith(targetResId) || targetResId.endsWith(nodeResId)) {
-                return MatchScore(1.0f, "Resource ID match ($nodeResId)")
+            score += when {
+                nodeResId == targetResId -> 0.5f
+                nodeResId.endsWith(targetResId) || targetResId.endsWith(nodeResId) -> 0.35f
+                else -> 0f
             }
         }
 
-        if (targetClass.isNotBlank() && nodeClass.lowercase() == targetClass &&
-            targetText.isBlank() && targetDesc.isBlank() && targetResId.isBlank()
-        ) {
-            return MatchScore(0.70f, "Accessibility class match ($nodeClass)")
+        if (targetClass.isNotBlank() && nodeClass.lowercase() == targetClass) {
+            score += 0.1f
         }
 
-        // 2. Exact text match
-        if (targetText.isNotBlank() && nodeText == targetText) {
-            val roleBonus = if (targetRole.isBlank() || nodeRole == targetRole) 0.05f else 0f
-            return MatchScore(0.95f + roleBonus, "Exact text match ($nodeText)")
-        }
-
-        // 3. Exact content description match
-        if (targetDesc.isNotBlank() && nodeDesc == targetDesc) {
-            return MatchScore(0.90f, "Exact content description match ($nodeDesc)")
-        }
-
-        // 4. Normalized / Substring text match (handles UI text variants e.g. "Add to Cart" vs "Add")
-        if (targetText.isNotBlank() && nodeText.isNotBlank()) {
-            if (nodeText.contains(targetText) || targetText.contains(nodeText)) {
-                return MatchScore(0.82f, "Normalized text match ($nodeText ~ $targetText)")
-            }
-        }
-
-        // 5. Content description substring match
-        if (targetDesc.isNotBlank() && nodeDesc.isNotBlank()) {
-            if (nodeDesc.contains(targetDesc) || targetDesc.contains(nodeDesc)) {
-                return MatchScore(0.78f, "Content description substring match")
-            }
-        }
-
-        // 6. Role match + partial text match
         if (targetRole.isNotBlank() && nodeRole == targetRole) {
-            if (targetText.isBlank() && targetDesc.isBlank() && targetResId.isBlank()) {
-                return MatchScore(0.60f, "Role only match ($nodeRole)")
-            }
-            if (targetText.isNotBlank() && (nodeText.contains(targetText) || targetText.contains(nodeText))) {
-                return MatchScore(0.85f, "Role + partial text match")
-            }
+            score += 0.2f
         }
 
-        return MatchScore(0.0f, "No match")
+        val textSimilarity = semanticSimilarity(targetText, nodeText)
+        val descriptionSimilarity = semanticSimilarity(targetDesc, nodeDesc)
+        val labelSimilarity = maxOf(textSimilarity, descriptionSimilarity)
+        if (labelSimilarity > 0f) {
+            score += 0.7f * labelSimilarity
+        }
+
+        val nodeContext = UIHierarchyReader.contextFor(node).lowercase()
+        val contextSimilarity = semanticSimilarity(target.context.orEmpty().lowercase(), nodeContext)
+        if (contextSimilarity > 0f) {
+            score += 0.2f * contextSimilarity
+        }
+
+        if (target.clickable == true && hasClickableAncestor(node)) {
+            score += 0.05f
+        }
+
+        val reason = when {
+            textSimilarity == 1f -> "Exact text match"
+            descriptionSimilarity == 1f -> "Exact content description match"
+            targetResId.isNotBlank() && score >= 0.5f -> "Resource ID and semantic match"
+            labelSimilarity > 0f && contextSimilarity > 0f -> "Label and hierarchy context match"
+            labelSimilarity > 0f -> "Semantic label variation match"
+            else -> "No match"
+        }
+        return MatchScore(score.coerceAtMost(1f), reason)
     }
+
+    private fun semanticSimilarity(expected: String, actual: String): Float {
+        val normalizedExpected = normalize(expected)
+        val normalizedActual = normalize(actual)
+        if (normalizedExpected.isBlank() || normalizedActual.isBlank()) return 0f
+        if (normalizedExpected == normalizedActual) return 1f
+        if (normalizedExpected.contains(normalizedActual) || normalizedActual.contains(normalizedExpected)) return 0.82f
+        val expectedTokens = normalizedExpected.split(" ").toSet()
+        val actualTokens = normalizedActual.split(" ").toSet()
+        val overlap = expectedTokens.intersect(actualTokens).size
+        if (overlap == 0) return 0f
+        return 0.55f + 0.4f * (overlap.toFloat() / maxOf(expectedTokens.size, actualTokens.size))
+    }
+
+    private fun normalize(value: String): String =
+        value.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim()
 
     private fun hasClickableAncestor(node: AccessibilityNodeInfo): Boolean {
         var current: AccessibilityNodeInfo? = node
@@ -152,4 +170,6 @@ object SemanticNodeFinder {
         val score: Float,
         val reason: String
     )
+
+    private const val AMBIGUITY_MARGIN = 0.08f
 }

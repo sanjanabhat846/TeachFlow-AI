@@ -18,6 +18,12 @@ is running.
 For Android-facing request and response examples, required fields, errors, and safety
 behavior, see [../docs/api_contract.md](../docs/api_contract.md).
 
+## Evaluation
+
+Run `python -m backend.evaluation.evaluate` from the repository root for deterministic
+backend evaluation cases. See [evaluation/README.md](evaluation/README.md) for the
+dataset, measured results, limitations, and Android/device validation boundaries.
+
 ## Modules
 
 - `app/intent`: rule-based intent and parameter extraction

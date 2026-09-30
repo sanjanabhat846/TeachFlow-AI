@@ -155,6 +155,24 @@ def test_android_learn_and_replay_api_sequence(tmp_path, monkeypatch) -> None:
     )
     assert unsafe_match.json()["matched"] is False
 
+    ambiguous_recovery = client.post(
+        "/ui/recover",
+        json={
+            "target": {"role": "button", "text": "Add to Cart", "clickable": True},
+            "ui_tree": {
+                "elements": [
+                    {"id": "add_one", "role": "button", "text": "Add", "clickable": True},
+                    {"id": "add_two", "role": "button", "text": "Add", "clickable": True},
+                ]
+            },
+        },
+    )
+    assert ambiguous_recovery.status_code == 200
+    assert ambiguous_recovery.json()["matched"] is False
+    assert ambiguous_recovery.json()["node_id"] is None
+    assert ambiguous_recovery.json()["requires_clarification"] is True
+    assert "ambiguous" in ambiguous_recovery.json()["reason"].lower()
+
     safety = client.post(
         "/safety/check",
         json={"actions": [{"action": "tap", "target": {"text": "Checkout & Pay"}}]},

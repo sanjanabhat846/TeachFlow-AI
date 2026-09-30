@@ -26,6 +26,15 @@ The backend routes, JSON request and response examples, required fields, errors,
 safety behavior are documented in [docs/api_contract.md](docs/api_contract.md).
 Backend setup and run instructions are in [backend/README.md](backend/README.md).
 
+## Phase 18 Evaluation
+
+Run the deterministic backend evaluation from the repository root with
+`python -m backend.evaluation.evaluate`. Its dataset, calculation method, measured
+results, quantity-validation behavior, and Android validation boundaries are documented in
+[backend/evaluation/README.md](backend/evaluation/README.md). The evaluation is not a
+real-device Android test; it distinguishes backend results from a static Android source
+check and device validation.
+
 ## Branches
 
 - `feat/android-frontend` (Android Application & Frontend Integration)

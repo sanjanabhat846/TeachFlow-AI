@@ -18,7 +18,9 @@ data class TargetSpec(
     @SerialName("clickable")
     val clickable: Boolean? = null,
     @SerialName("enabled")
-    val enabled: Boolean? = null
+    val enabled: Boolean? = null,
+    @SerialName("context")
+    val context: String? = null
 )
 
 @Serializable

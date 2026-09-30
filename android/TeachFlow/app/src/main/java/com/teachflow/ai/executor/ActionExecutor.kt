@@ -84,7 +84,7 @@ object ActionExecutor {
         if (matchResult.node == null) {
             delay(500) // Brief pause to allow UI transitions to settle
             val reReadRoot = TeachFlowAccessibilityService.getRootNode() ?: rootNode
-            matchResult = SemanticNodeFinder.findBestMatch(reReadRoot, resolvedTarget, minConfidence = 0.4f)
+            matchResult = SemanticNodeFinder.findBestMatch(reReadRoot, resolvedTarget, minConfidence = 0.6f)
         }
 
         val targetNode = matchResult.node

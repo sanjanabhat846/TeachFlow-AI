@@ -274,25 +274,35 @@ fun ReplayScreen(
                                             }
                                             val match = matchCall.getOrThrow()
                                             if (!match.matched) {
-                                                val recovery = TeachFlowApiClient.recoverUiTarget(target, tree).getOrNull()
-                                                executionMessage = if (recovery?.requiresClarification == true) {
-                                                    "No confident UI match. Please clarify the target before continuing."
-                                                } else {
-                                                    "No confident UI match; execution stopped."
+                                                delay(500)
+                                                val refreshedTree = TeachFlowAccessibilityService.latestUITree.value
+                                                val recoveryCall = TeachFlowApiClient.recoverUiTarget(target, refreshedTree)
+                                                if (recoveryCall.isFailure) {
+                                                    executionMessage = "UI recovery failed; execution stopped: ${recoveryCall.exceptionOrNull()?.message}"
+                                                    allSuccess = false
+                                                    break
                                                 }
-                                                TeachFlowApiClient.sendExecutionResult(
-                                                    ExecutionResult(
-                                                        flowId = wf.flowId,
-                                                        success = false,
-                                                        completedSteps = i,
-                                                        totalSteps = steps.size,
-                                                        step = step.stepIndex,
-                                                        message = executionMessage,
-                                                        error = "Semantic UI target not found"
+                                                val recovery = recoveryCall.getOrThrow()
+                                                if (!recovery.matched) {
+                                                    executionMessage = if (recovery.requiresClarification) {
+                                                        "${recovery.reason ?: "No confident UI match"}. Please clarify the target before continuing."
+                                                    } else {
+                                                        "No confident UI match; execution stopped."
+                                                    }
+                                                    TeachFlowApiClient.sendExecutionResult(
+                                                        ExecutionResult(
+                                                            flowId = wf.flowId,
+                                                            success = false,
+                                                            completedSteps = i,
+                                                            totalSteps = steps.size,
+                                                            step = step.stepIndex,
+                                                            message = executionMessage,
+                                                            error = "Semantic UI target not found"
+                                                        )
                                                     )
-                                                )
-                                                allSuccess = false
-                                                break
+                                                    allSuccess = false
+                                                    break
+                                                }
                                             }
                                         }
 

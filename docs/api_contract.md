@@ -271,7 +271,7 @@ A valid report returns `204 No Content` with an empty response body. This route 
 
 ## 5. Current Android UI Tree and Semantic Targets
 
-The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `timestamp` may be an integer or `null`; `elements` defaults to `[]`. Each element requires `id`; `role`, `class_name`, `text`, `content_description`, and `resource_id` default to `""`; `clickable` and `editable` default to `false`; `enabled` defaults to `true`; `scrollable` defaults to `false`; and `bounds` may be a string or `null`. Unknown fields are rejected. Bounds are retained as supporting metadata, not used as the primary target selector.
+The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `timestamp` may be an integer or `null`; `elements` defaults to `[]`. Each element requires `id`; `role`, `class_name`, `text`, `content_description`, `resource_id`, and `context` default to `""`; `clickable` and `editable` default to `false`; `enabled` defaults to `true`; `scrollable` defaults to `false`; and `bounds` may be a string or `null`. `context` may describe nearby labeled ancestors to support safe disambiguation across layouts. Unknown fields are rejected. Bounds are retained as supporting metadata, not used as the primary target selector.
 
 ### `POST /ui/match`
 
@@ -304,7 +304,7 @@ Response `200` (`UiMatchResponse`):
 {"matched": true, "node_id": "add_button", "confidence": 0.65}
 ```
 
-A non-confident match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`. Matching uses role, text, content description, resource ID, and class; disabled elements are excluded, and a target marked `clickable:true` only matches a clickable element. Bounds are not used to select or execute actions.
+A non-confident or ambiguous match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`; similarly scoring candidates require clarification instead of first-candidate selection. Matching uses role, text, content description, resource ID, class, clickability, enabled state, and optional hierarchy context. Disabled elements are excluded, and a target marked `clickable:true` only matches a clickable element. Bounds are not used to select or execute actions.
 
 ### `POST /ui/recover`
 

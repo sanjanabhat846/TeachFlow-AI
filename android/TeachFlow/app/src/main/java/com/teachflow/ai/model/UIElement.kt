@@ -26,5 +26,7 @@ data class UIElement(
     @SerialName("scrollable")
     val scrollable: Boolean = false,
     @SerialName("bounds")
-    val bounds: String? = null
+    val bounds: String? = null,
+    @SerialName("context")
+    val context: String = ""
 )

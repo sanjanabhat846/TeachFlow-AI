@@ -48,7 +48,11 @@ class TeachFlowAccessibilityService : AccessibilityService() {
             role = role,
             text = text.takeIf { it.isNotBlank() },
             contentDescription = desc?.takeIf { it.isNotBlank() },
-            resourceId = resId?.takeIf { it.isNotBlank() }
+            resourceId = resId?.takeIf { it.isNotBlank() },
+            className = className,
+            clickable = node.isClickable,
+            enabled = node.isEnabled,
+            context = UIHierarchyReader.contextFor(node)
         )
 
         when (event.eventType) {
