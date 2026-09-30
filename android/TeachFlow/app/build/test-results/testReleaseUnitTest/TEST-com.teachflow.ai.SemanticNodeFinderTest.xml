@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.teachflow.ai.SemanticNodeFinderTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-30T02:30:26" hostname="SANJANA" time="0.024">
-  <properties/>
-  <testcase name="testSemanticRecoveryForUIVariations" classname="com.teachflow.ai.SemanticNodeFinderTest" time="0.019"/>
-  <testcase name="testExactResourceIdMatch" classname="com.teachflow.ai.SemanticNodeFinderTest" time="0.004"/>
-  <testcase name="testNoCoordinateDependency" classname="com.teachflow.ai.SemanticNodeFinderTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

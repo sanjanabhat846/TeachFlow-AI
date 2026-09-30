@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="accessibility_service_description">Enables TeachFlow AI to inspect interactive UI elements and execute voice-commanded workflows without hardcoded coordinates.</string>
-    <string name="accessibility_service_label">TeachFlow Automation Service</string>
-    <string name="app_name">TeachFlow AI</string>
-</resources>
