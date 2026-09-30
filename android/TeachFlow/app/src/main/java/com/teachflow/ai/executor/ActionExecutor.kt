@@ -14,7 +14,8 @@ object ActionExecutor {
 
     private val SENSITIVE_KEYWORDS = listOf(
         "pay", "payment", "checkout", "buy", "order now",
-        "confirm purchase", "authenticate", "otp", "password", "credit card"
+        "confirm purchase", "authenticate", "otp", "password", "credit card",
+        "login", "log in", "log-in", "sign in", "sign-in"
     )
 
     fun isSensitiveAction(step: WorkflowStep): Boolean {
@@ -150,7 +151,7 @@ object ActionExecutor {
             // Fallback to click if set_text is not directly supported
             performClick(node)
         }
-        return true
+        return result
     }
 
     private fun performScroll(node: AccessibilityNodeInfo, direction: String): Boolean {

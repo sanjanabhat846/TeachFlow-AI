@@ -19,7 +19,7 @@ These counts are from the Phase 18 evaluation run in this worktree. A case passe
 | Workflow matching and binding | 3 | 3 | `/flows/match`, `/execution/plan`; expected flow ID, fully bound action list, and `404` for a nonexistent workflow. |
 | Semantic UI matching | 8 | 8 | `match_ui_element`; expected match decision and node ID for exact, text, resource-ID and context variation, disabled/missing targets, ambiguity, and low confidence. |
 | Recovery | 3 | 3 | `recover_target`; expected recovery or clarification decision, including no node for low-confidence results. |
-| Safety detection | 6 | 6 | `/safety/check`; approval boolean for ordinary action, checkout, payment, password, OTP, and sign-in/authentication. |
+| Safety detection | 7 | 7 | `/safety/check`; approval boolean for ordinary action, checkout, payment, password, OTP, sign-in/authentication, and hyphenated sign-in. |
 | End-to-end logical backend sequence | 1 | 1 | API calls for classification, extraction, match, binding/plan, UI match, safety, then a valid execution-result report (`204`). Each expected value/status in the sequence must match. |
 | Android approval-gate source check | 1 | 1 | Static ordering check in `ReplayScreen.kt`: backend safety check, approval/wait/cancel branch, then accessibility executor call. This is not an Android runtime test. |
 

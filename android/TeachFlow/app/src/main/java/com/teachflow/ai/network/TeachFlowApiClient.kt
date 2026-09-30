@@ -363,7 +363,7 @@ object TeachFlowApiClient {
         if (this == JsonNull) "" else jsonPrimitive.content
 
     private val SENSITIVE_PATTERN =
-        Regex("\\b(checkout|pay(?:ment)?|otp|password|passcode|pin|authenticate|authentication|login|sign in|verification code)\\b", RegexOption.IGNORE_CASE)
+        Regex("\\b(checkout|pay(?:ment)?|otp|password|passcode|pin|authenticate|authentication|log[ -]*in|sign[ -]*in|verification code)\\b", RegexOption.IGNORE_CASE)
     private val CART_OR_SENSITIVE_PATTERN =
         Regex("\\b(cart|checkout|pay|payment|otp|password|passcode|pin|login|sign in)\\b", RegexOption.IGNORE_CASE)
 

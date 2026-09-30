@@ -195,7 +195,8 @@
     {"id": "payment_requires_approval", "actions": [{"action": "tap", "target": {"text": "Pay now"}}], "expected_approval": true},
     {"id": "password_requires_approval", "actions": [{"action": "type", "target": {"text": "Password"}}], "expected_approval": true},
     {"id": "otp_requires_approval", "actions": [{"action": "type", "target": {"text": "Enter OTP"}}], "expected_approval": true},
-    {"id": "authentication_requires_approval", "actions": [{"action": "tap", "target": {"text": "Sign in"}}], "expected_approval": true}
+    {"id": "authentication_requires_approval", "actions": [{"action": "tap", "target": {"text": "Sign in"}}], "expected_approval": true},
+    {"id": "hyphenated_authentication_requires_approval", "actions": [{"action": "tap", "target": {"text": "Sign-in"}}], "expected_approval": true}
   ],
   "end_to_end": [
     {

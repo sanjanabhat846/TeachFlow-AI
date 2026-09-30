@@ -1,110 +1,53 @@
-# TeachFlow AI — Android Application
+# TeachFlow AI Android App
 
-This directory contains the Android application for **TeachFlow AI — Teachable Voice Automation**.
+The Kotlin/Jetpack Compose client captures Android accessibility events and UI semantics, calls the FastAPI backend in live mode, and performs actions locally through `AccessibilityService`. It uses semantic labels and resource metadata rather than coordinates as primary selectors.
 
-TeachFlow AI allows users to demonstrate a UI task once in any third-party app (or the built-in target app simulator) and re-execute it on demand with new voice inputs, without relying on hardcoded `(x,y)` coordinates.
+## Architecture
 
----
+- `accessibility/TeachFlowAccessibilityService.kt` captures action events and maintains the latest UI tree.
+- `accessibility/UIHierarchyReader.kt` extracts role, text, content description, resource ID, class, enabled/clickable state, bounds, and labeled ancestor context.
+- `network/TeachFlowApiClient.kt` calls the current unversioned backend routes; `NetworkConfig.kt` selects live/mock mode.
+- `executor/SemanticNodeFinder.kt` resolves targets locally; `ActionExecutor.kt` performs Android accessibility actions and reports their result to the caller.
+- `ui/screens/LearnScreen.kt` captures the built-in simulator or service events; `ReplayScreen.kt` coordinates plan, safety, UI match/recovery, approval, execution, and result reporting.
+- `MockBackendEngine.kt` supplies offline intent/flow behavior. The embedded `DemoAppSimulator` is a local Compose demo target, not a third-party app.
 
-## Architecture Overview
+## Live Backend Routes
 
-```text
-android/TeachFlow/app/src/main/java/com/teachflow/ai/
-├── accessibility/
-│   ├── TeachFlowAccessibilityService.kt  # Android AccessibilityService & event capture
-│   └── UIHierarchyReader.kt              # Recursively extracts UI tree & roles into JSON
-├── executor/
-│   ├── SemanticNodeFinder.kt             # Matches execution targets semantically (resourceId, role, text, normalized text)
-│   └── ActionExecutor.kt                 # Executes tap, type, scroll, and set_quantity with approval safeguards
-├── network/
-│   ├── NetworkConfig.kt                  # Base URL & Mock mode toggle
-│   ├── MockBackendEngine.kt              # Offline mock flow engine for zero-dependency testing
-│   └── TeachFlowApiClient.kt             # REST client communicating with Python backend
-├── model/                                # Canonical JSON models matching shared contracts
-└── ui/
-    ├── MainActivity.kt                   # Jetpack Compose navigation & state host
-    ├── components/
-    │   ├── ApprovalDialog.kt             # Human-in-the-loop sensitive action dialog
-    │   └── DemoAppSimulator.kt           # Embedded food ordering app simulator for live demos
-    └── screens/
-        ├── HomeScreen.kt                 # TeachFlow dashboard & feature cards
-        ├── LearnScreen.kt                # Demonstration capture interface
-        ├── ReplayScreen.kt               # Voice replay runner with speech-to-text
-        ├── WorkflowsScreen.kt            # Saved workflow contract browser
-        └── AccessibilityStatusScreen.kt  # Service status inspector & backend config
+With **Mock Engine** off, Learn/Replay use `POST /intent/classify`, `POST /intent/parameters`, `POST /flows/synthesize`, `POST /flows/learn`, `POST /flows/match`, `GET /flows/{flow_id}`, `POST /execution/plan`, `POST /safety/check`, `POST /ui/match`, `POST /ui/recover`, and `POST /execution/result` as applicable. There is no standalone UI-tree upload endpoint; the current tree is nested in UI match/recovery requests. Exact JSON contracts are in [../docs/api_contract.md](../docs/api_contract.md).
+
+For the Android Emulator, the default URL `http://10.0.2.2:8000` reaches the host machine. For a physical device, configure a reachable host address under **Accessibility Status**. Run the backend from the repository root with `python -m uvicorn backend.app.main:app --reload`.
+
+## Learning and Replay Demo
+
+1. Turn **Mock Engine** off and start the backend.
+2. Enable the TeachFlow accessibility service in Android Settings. Use the built-in simulator for the documented demo.
+3. In Learn, enter **“Order 2 pizzas”**. Demonstrate **Search → select pizza → set quantity to 2 → add to cart** and stop. Android sends prompt-derived intent/parameters, synthesizes a workflow, refines it with captured semantic targets, and stores it with `/flows/learn`.
+4. In Replay, enter or speak **“Get me 3 burgers”**. The client classifies/extracts, matches the saved flow, retrieves it, and requests a parameter-bound plan. Before each targeted action it checks safety and submits the current UI tree for semantic matching. If the first match fails, it refreshes the tree and calls `/ui/recover`; low-confidence or ambiguous recovery stops for clarification. Android then resolves and executes the action through accessibility nodes and reports an execution result.
+5. For checkout, payment, password, OTP, and supported authentication labels, the client pauses for **Approve** or **Cancel** before executing the sensitive step.
+
+This is the intended integrated flow. Backend routes and logic have deterministic tests/evaluation; Android compilation and this sequence on an emulator or physical device have not been verified in this environment.
+
+## Mock and Live Scope
+
+Live Learn/Replay uses the real FastAPI routes. Mock mode bypasses those network calls through `MockBackendEngine`, but Replay still relies on the Android accessibility service and local executor; mock mode is not a real app-action simulator.
+
+The dashboard workflow count and **Workflows** browser read `MockBackendEngine` even when live mode is enabled. They do not show authoritative backend storage. Backend-backed listing and browser actions remain incomplete.
+
+## Build and Tests
+
+The Android project targets Java 17, SDK 34, and Gradle 8.4. In a complete Android build environment, run from `android/TeachFlow`:
+
+```powershell
+.\gradlew.bat testDebugUnitTest
 ```
 
----
+In this checkout, `gradle-wrapper.jar` is missing and no system Gradle is installed, so the command cannot run and Android build/test status is unverified. No device test was performed. Backend tests and deterministic evaluation commands are documented in [../backend/README.md](../backend/README.md) and [../backend/evaluation/README.md](../backend/evaluation/README.md).
 
-## How to Enable Accessibility Service
+## Known Limitations
 
-1. Build and install the APK on an Android Emulator or physical device (Android 8.0+ / API 26+).
-2. Open Android **Settings** -> **Accessibility**.
-3. Under **Downloaded Apps** / **Services**, select **TeachFlow Automation Service**.
-4. Turn the toggle **ON** and accept accessibility permissions.
-5. Return to TeachFlow AI. The status badge on the dashboard will turn green: **"Accessibility Service Connected"**.
-
----
-
-## Backend Modes
-
-Live backend mode is enabled by default. The emulator connects to the host backend at `http://10.0.2.2:8000`; a physical device should use the host's reachable LAN address. Mock mode remains available for offline testing.
-
-- Toggle **Mock Engine** ON/OFF via the switch on the TeachFlow Dashboard.
-- When Mock mode is ON:
-  - Demonstrating "Order 2 pizzas" automatically synthesizes `ORDER_FOOD(item, quantity)`.
-  - Replaying "Get me 3 burgers" automatically extracts `item = burger` and `quantity = 3` and executes the steps using `SemanticNodeFinder`.
-
-### Phase 16 Workflow Listing Limitation
-
-With Mock mode OFF, Learn and Replay communicate with the real FastAPI backend for workflow learning, matching, planning, safety checks, and execution reporting. The dashboard workflow count and the workflow browser still read from `MockBackendEngine`, even when live mode is enabled. They are not authoritative views of workflows stored by the backend. Backend-backed workflow listing is a known Phase 16 limitation and is deferred to a later integration step.
-
----
-
-## How to Connect to Python Backend (`feat/ai-flow-engine`)
-
-1. Start the Python backend server (e.g. `http://localhost:8000`).
-2. If running on Android Emulator, `10.0.2.2` maps directly to your host machine's `localhost`.
-3. In TeachFlow AI, go to **Accessibility Status** screen -> **BACKEND_BASE_URL**.
-4. Set URL to `http://10.0.2.2:8000` (or host IP if using a physical device over WiFi).
-5. Keep **Mock Engine** OFF on the dashboard for backend integration.
-
----
-
-## Demo Procedure
-
-### 1. Learn Phase ("Order 2 pizzas")
-- Go to **Learn a Task**.
-- Prompt: `"Order 2 pizzas"`.
-- Tap **Start Demonstration**.
-- Perform actions in the embedded simulator or 3rd-party food app:
-  - Search -> Select Pizza -> Set Quantity to 2 -> Tap "Add to Cart".
-- Tap **Stop Demonstration**.
-- TeachFlow sends intent and parameters to the backend, synthesizes the flow from the demonstration, refines it with captured semantic targets, and stores it through `/flows/learn`.
-
-### 2. Replay Phase ("Get me 3 burgers")
-- Go to **Run a Learned Task**.
-- Speak or type: `"Get me 3 burgers"`.
-- TeachFlow classifies the command, extracts `item: burger` and `quantity: 3`, matches the stored workflow, and requests a parameter-bound execution plan.
-- Tap **Run**.
-- Before each action, TeachFlow asks the backend to check safety and semantically match the target against the current accessibility tree. Android resolves and executes the action through accessibility nodes, then reports the result.
-
-### 3. Human-in-the-Loop Sensitive Action Checkpoint
-- When the backend identifies a sensitive step (e.g. "Checkout & Pay"), execution pauses before the action.
-- A popup appears: `⚠️ User Approval Required`.
-- Tap **Approve** to proceed or **Cancel** to abort.
-
----
-
-## Unit Testing
-
-Run unit tests via command line or Android Studio:
-```bash
-./gradlew test
-```
-Tests cover:
-- UI hierarchy extraction & JSON serialization
-- Semantic target matching & normalized text recovery ("Add to Cart" vs "Add")
-- Parameter substitution (`{{item}}` -> "burger")
-- Sensitive action approval triggers
-- Mock backend engine synthesis
+- Workflow synthesis is deterministic and focused on `ORDER_FOOD`; it is not general-purpose AI planning.
+- Backend workflow storage is local JSON; backend `/execution/result` validates a payload but does not persist it or execute Android actions.
+- Dashboard count/workflow browser are mock-backed in live mode.
+- Safety classification is text-based and requires client approval handling.
+- Semantic matching depends on accessibility metadata and labeled context; uncertainty should stop for clarification.
+- Android build and real-device behavior remain unverified because the wrapper JAR/system Gradle are unavailable here.
