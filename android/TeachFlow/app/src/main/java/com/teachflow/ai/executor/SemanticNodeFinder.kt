@@ -79,12 +79,26 @@ object SemanticNodeFinder {
         val targetText = target.text?.lowercase() ?: ""
         val targetDesc = target.contentDescription?.lowercase() ?: ""
         val targetRole = target.role?.lowercase() ?: ""
+        val targetClass = target.className?.lowercase() ?: ""
+
+        if (target.enabled == true && !node.isEnabled) {
+            return MatchScore(0f, "Disabled node")
+        }
+        if (target.clickable == true && !hasClickableAncestor(node)) {
+            return MatchScore(0f, "Node is not clickable")
+        }
 
         // 1. Resource ID exact or endsWith match
         if (targetResId.isNotBlank() && nodeResId.isNotBlank()) {
             if (nodeResId == targetResId || nodeResId.endsWith(targetResId) || targetResId.endsWith(nodeResId)) {
                 return MatchScore(1.0f, "Resource ID match ($nodeResId)")
             }
+        }
+
+        if (targetClass.isNotBlank() && nodeClass.lowercase() == targetClass &&
+            targetText.isBlank() && targetDesc.isBlank() && targetResId.isBlank()
+        ) {
+            return MatchScore(0.70f, "Accessibility class match ($nodeClass)")
         }
 
         // 2. Exact text match
@@ -123,6 +137,15 @@ object SemanticNodeFinder {
         }
 
         return MatchScore(0.0f, "No match")
+    }
+
+    private fun hasClickableAncestor(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        while (current != null) {
+            if (current.isClickable && current.isEnabled) return true
+            current = current.parent
+        }
+        return false
     }
 
     data class MatchScore(

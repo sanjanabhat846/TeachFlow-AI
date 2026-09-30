@@ -26,11 +26,18 @@ def _score_candidate(target: dict, element: dict) -> float:
     target_text = _normalize(str(target.get("text", "")))
     target_description = _normalize(str(target.get("content_description", "")))
     target_resource = str(target.get("resource_id", "")).lower()
+    target_class = str(target.get("class_name", "")).lower()
 
     role = str(element.get("role", "")).lower()
     text = _normalize(str(element.get("text", "")))
     description = _normalize(str(element.get("content_description", "")))
     resource = str(element.get("resource_id", "")).lower()
+    class_name = str(element.get("class_name", "")).lower()
+
+    if not element.get("enabled", True):
+        return 0.0
+    if target.get("clickable") is True and not element.get("clickable", False):
+        return 0.0
 
     score = 0.0
 
@@ -39,6 +46,8 @@ def _score_candidate(target: dict, element: dict) -> float:
             score += 0.4
         elif target_role in role or role in target_role:
             score += 0.25
+        elif _normalize(target_role) and _normalize(target_role) in description:
+            score += 0.4
 
     if target_text:
         if text == target_text:
@@ -62,7 +71,16 @@ def _score_candidate(target: dict, element: dict) -> float:
         elif target_resource in resource or resource in target_resource:
             score += 0.08
 
-    return score
+    if target_class and class_name:
+        if class_name == target_class:
+            score += 0.15
+        elif target_class in class_name or class_name in target_class:
+            score += 0.08
+
+    if target.get("clickable") is True and element.get("clickable", False):
+        score += 0.05
+
+    return min(score, 1.0)
 
 
 def match_ui_element(target: dict, ui_tree: dict) -> dict:

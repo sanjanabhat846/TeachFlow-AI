@@ -5,7 +5,7 @@
     {
       "id": "node_1",
       "role": "edit_text",
-      "className": "android.widget.EditText",
+      "class_name": "android.widget.EditText",
       "text": "Search",
       "content_description": "Search food items",
       "resource_id": "com.example.foodapp:id/search_box",
@@ -18,7 +18,7 @@
     {
       "id": "node_2",
       "role": "button",
-      "className": "android.widget.Button",
+      "class_name": "android.widget.Button",
       "text": "Add to Cart",
       "content_description": "Add selected item to cart",
       "resource_id": "com.example.foodapp:id/add_cart",

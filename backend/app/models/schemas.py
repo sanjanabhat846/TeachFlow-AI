@@ -14,11 +14,15 @@ class UiElement(BaseModel):
 
     id: str
     role: str = ""
+    class_name: str = ""
     text: str = ""
     content_description: str = ""
     resource_id: str = ""
     clickable: bool = False
     enabled: bool = True
+    editable: bool = False
+    scrollable: bool = False
+    bounds: str | None = None
 
 
 class UiTree(BaseModel):
@@ -27,6 +31,7 @@ class UiTree(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     screen: str = ""
+    timestamp: int | None = None
     elements: list[UiElement] = Field(default_factory=list)
 
 

@@ -271,7 +271,7 @@ A valid report returns `204 No Content` with an empty response body. This route 
 
 ## 5. Current Android UI Tree and Semantic Targets
 
-The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `elements` is optional and defaults to `[]`. Each element requires `id`; `role`, `text`, `content_description`, and `resource_id` default to `""`; `clickable` defaults to `false`; `enabled` defaults to `true`. Unknown fields are rejected.
+The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `timestamp` may be an integer or `null`; `elements` defaults to `[]`. Each element requires `id`; `role`, `class_name`, `text`, `content_description`, and `resource_id` default to `""`; `clickable` and `editable` default to `false`; `enabled` defaults to `true`; `scrollable` defaults to `false`; and `bounds` may be a string or `null`. Unknown fields are rejected. Bounds are retained as supporting metadata, not used as the primary target selector.
 
 ### `POST /ui/match`
 
@@ -286,6 +286,7 @@ Request body (`target` and `ui_tree` required):
       {
         "id": "add_button",
         "role": "button",
+        "class_name": "android.widget.Button",
         "text": "Add",
         "content_description": "Add item to cart",
         "resource_id": "add_btn",
@@ -303,7 +304,7 @@ Response `200` (`UiMatchResponse`):
 {"matched": true, "node_id": "add_button", "confidence": 0.65}
 ```
 
-A non-confident match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`.
+A non-confident match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`. Matching uses role, text, content description, resource ID, and class; disabled elements are excluded, and a target marked `clickable:true` only matches a clickable element. Bounds are not used to select or execute actions.
 
 ### `POST /ui/recover`
 
@@ -359,4 +360,4 @@ Pydantic request models reject unknown fields. In brief:
 - Required execution report fields: `success`, `step`.
 - Optional safety data: `actions` defaults to an empty array.
 
-The shared `UiTreeRequest` Pydantic model is not currently mounted as a standalone route. Use the nested `ui_tree` shape shown above.
+The shared `UiTreeRequest` Pydantic model is not currently mounted as a standalone route. Use the nested `ui_tree` shape shown above. Android sends the current accessibility tree with each semantic match request; there is no coordinate-based execution endpoint.

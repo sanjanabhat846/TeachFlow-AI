@@ -105,7 +105,7 @@ object ActionExecutor {
             "tap", "click", "select" -> performClick(targetNode)
             "type", "search" -> performType(targetNode, resolvedStep.value ?: "")
             "scroll" -> performScroll(targetNode, resolvedStep.value ?: "down")
-            "set_quantity" -> performSetQuantity(targetNode, resolvedStep.value ?: "1")
+            "set_quantity" -> performSetQuantity(targetNode, resolvedStep.value ?: "1", rootNode)
             else -> performClick(targetNode)
         }
 
@@ -162,8 +162,52 @@ object ActionExecutor {
         return node.performAction(action)
     }
 
-    private fun performSetQuantity(node: AccessibilityNodeInfo, quantity: String): Boolean {
-        return performType(node, quantity)
+    private fun performSetQuantity(
+        node: AccessibilityNodeInfo,
+        quantity: String,
+        rootNode: AccessibilityNodeInfo
+    ): Boolean {
+        if (node.isEditable) return performType(node, quantity)
+
+        val requestedQuantity = quantity.toIntOrNull() ?: return false
+        val currentQuantity = findQuantityValue(node)?.toIntOrNull() ?: return false
+        val difference = requestedQuantity - currentQuantity
+        if (difference == 0) return true
+        if (kotlin.math.abs(difference) > 50) return false
+
+        val controlDescription = if (difference > 0) "increase quantity" else "decrease quantity"
+        val control = findNode(rootNode) {
+            it.contentDescription?.toString()?.contains(controlDescription, ignoreCase = true) == true
+        } ?: return false
+
+        repeat(kotlin.math.abs(difference)) {
+            if (!control.isEnabled || !control.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun findQuantityValue(node: AccessibilityNodeInfo): String? {
+        val nodeText = node.text?.toString().orEmpty()
+        Regex("\\b\\d+\\b").find(nodeText)?.value?.let { return it }
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            findQuantityValue(child)?.let { return it }
+        }
+        return null
+    }
+
+    private fun findNode(
+        node: AccessibilityNodeInfo?,
+        predicate: (AccessibilityNodeInfo) -> Boolean
+    ): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (predicate(node)) return node
+        for (index in 0 until node.childCount) {
+            findNode(node.getChild(index), predicate)?.let { return it }
+        }
+        return null
     }
 
     fun resolveValue(template: String?, parameters: Map<String, String>): String? {

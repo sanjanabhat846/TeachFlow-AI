@@ -21,7 +21,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.teachflow.ai.accessibility.TeachFlowAccessibilityService
 import com.teachflow.ai.executor.ActionExecutor
+import com.teachflow.ai.model.ExecutionResult
 import com.teachflow.ai.model.Workflow
 import com.teachflow.ai.network.TeachFlowApiClient
 import com.teachflow.ai.ui.components.DemoAppSimulator
@@ -64,6 +66,11 @@ fun ReplayScreen(
             res.onSuccess { (wf, params) ->
                 matchedWorkflow = wf
                 extractedParams = params
+                executionMessage = "Matched ${wf.flowId}; ready to execute."
+            }.onFailure { error ->
+                matchedWorkflow = null
+                extractedParams = emptyMap()
+                executionMessage = "Backend request failed: ${error.message}"
             }
         }
     }
@@ -208,12 +215,25 @@ fun ReplayScreen(
                                         currentStepIndex = i + 1
                                         executionMessage = "Step ${i + 1}/${steps.size}: ${step.action} target '${step.target?.text ?: step.target?.role ?: "UI element"}'"
 
-                                        if (ActionExecutor.isSensitiveAction(step)) {
+                                        val safetyCall = TeachFlowApiClient.checkSafety(step)
+                                        if (safetyCall.isFailure) {
+                                            executionMessage = "Safety check failed; execution stopped: ${safetyCall.exceptionOrNull()?.message}"
+                                            allSuccess = false
+                                            break
+                                        }
+                                        val safetyResult = safetyCall.getOrThrow()
+                                        val approvalRequired =
+                                            safetyResult.requiresApproval || ActionExecutor.isSensitiveAction(step)
+                                        var approved = false
+
+                                        if (approvalRequired) {
                                             var approvedState = false
                                             var cancelState = false
 
                                             onRequestApproval(
-                                                step.approvalReason ?: "Sensitive Checkpoint (${step.action})",
+                                                safetyResult.reason
+                                                    ?: step.approvalReason
+                                                    ?: "Sensitive Checkpoint (${step.action})",
                                                 { approvedState = true },
                                                 { cancelState = true }
                                             )
@@ -225,6 +245,52 @@ fun ReplayScreen(
 
                                             if (cancelState) {
                                                 executionMessage = "Execution cancelled by user at sensitive step ${i + 1}"
+                                                TeachFlowApiClient.sendExecutionResult(
+                                                    ExecutionResult(
+                                                        flowId = wf.flowId,
+                                                        success = false,
+                                                        completedSteps = i,
+                                                        totalSteps = steps.size,
+                                                        step = step.stepIndex,
+                                                        message = "Execution cancelled at approval checkpoint",
+                                                        requiresApproval = true,
+                                                        approvalReason = safetyResult.reason
+                                                    )
+                                                )
+                                                allSuccess = false
+                                                break
+                                            }
+                                            approved = approvedState
+                                        }
+
+                                        val target = step.target
+                                        if (target != null) {
+                                            val tree = TeachFlowAccessibilityService.latestUITree.value
+                                            val matchCall = TeachFlowApiClient.matchUiTarget(target, tree)
+                                            if (matchCall.isFailure) {
+                                                executionMessage = "UI semantic matching failed; execution stopped: ${matchCall.exceptionOrNull()?.message}"
+                                                allSuccess = false
+                                                break
+                                            }
+                                            val match = matchCall.getOrThrow()
+                                            if (!match.matched) {
+                                                val recovery = TeachFlowApiClient.recoverUiTarget(target, tree).getOrNull()
+                                                executionMessage = if (recovery?.requiresClarification == true) {
+                                                    "No confident UI match. Please clarify the target before continuing."
+                                                } else {
+                                                    "No confident UI match; execution stopped."
+                                                }
+                                                TeachFlowApiClient.sendExecutionResult(
+                                                    ExecutionResult(
+                                                        flowId = wf.flowId,
+                                                        success = false,
+                                                        completedSteps = i,
+                                                        totalSteps = steps.size,
+                                                        step = step.stepIndex,
+                                                        message = executionMessage,
+                                                        error = "Semantic UI target not found"
+                                                    )
+                                                )
                                                 allSuccess = false
                                                 break
                                             }
@@ -234,13 +300,17 @@ fun ReplayScreen(
                                             flowId = wf.flowId,
                                             step = step,
                                             parameters = extractedParams,
-                                            approved = true
+                                            approved = approved
                                         )
+
+                                        TeachFlowApiClient.sendExecutionResult(stepResult)
 
                                         delay(600) // Brief step delay for visual observation
 
-                                        if (!stepResult.success && stepResult.error != null) {
-                                            executionMessage = "Step ${i + 1} issue: ${stepResult.message}. Proceeding with semantic recovery..."
+                                        if (!stepResult.success) {
+                                            executionMessage = "Step ${i + 1} failed: ${stepResult.message}"
+                                            allSuccess = false
+                                            break
                                         }
                                     }
 
@@ -248,6 +318,8 @@ fun ReplayScreen(
                                     executionSuccess = allSuccess
                                     if (allSuccess) {
                                         executionMessage = "Workflow completed successfully! All actions executed."
+                                    } else if (executionMessage.isBlank()) {
+                                        executionMessage = "Workflow stopped before completion."
                                     }
                                 }
                             },
