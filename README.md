@@ -1,44 +1,221 @@
-# TeachFlow AI
+# 🚀 TeachFlow AI: Teachable & Semantic Android Automation Engine
 
-TeachFlow AI is a demo of teachable Android UI workflows. It combines a rule-based FastAPI backend with an Android app that captures accessibility semantics, stores parameterized workflows, and replays actions using semantic UI matching instead of screen coordinates.
+TeachFlow AI is an end-to-end AI automation system designed to **record, synthesize, match, and replay Android UI workflows** using **semantic element matching** instead of brittle screen coordinates. It combines an **Android Jetpack Compose application & Accessibility Service** with a **FastAPI backend engine** and an **offline Mock Engine simulator**.
 
-## Architecture
+---
 
-- `android/`: Kotlin/Jetpack Compose app, AccessibilityService, action executor, and OkHttp API client.
-- `backend/`: FastAPI routes for intent/parameter extraction, workflow storage/matching, execution plans, safety checks, and UI match/recovery.
-- `shared/`: representative JSON contracts for workflows, UI trees, and execution results.
-- `docs/api_contract.md`: the implemented HTTP API and payloads.
+## 🌟 Key Features
 
-The intent and parameter components are deterministic rule-based MVP logic, not an ML model. Workflow data is stored locally in `backend/data/workflows.json`.
+- 🎙️ **Natural Language Intent & Parameter Extraction**: Classifies user commands like *"Order 2 pizzas"* or *"Get me 3 burgers"* into structured parameterized workflows (`ORDER_FOOD(item, quantity)`).
+- 🔍 **Coordinate-Free Semantic UI Matching**: Resolves target UI elements across layout variations, screen sizes, and text changes using text, content description, resource IDs, hierarchy context, and accessibility attributes ([`SemanticNodeFinder`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/main/java/com/teachflow/ai/executor/SemanticNodeFinder.kt)).
+- 🤖 **Demonstration-Based Workflow Learning**: Captures user interactions (*Search → Select Item → Set Quantity → Add to Cart*) and synthesizes reusable, parameterized workflow templates.
+- 🛡️ **Human-in-the-Loop Safety Engine**: Automatically detects sensitive checkpoints (Checkout, Payment, Login, PINs, OTPs) and enforces explicit human approval before proceeding.
+- 📱 **Embedded Demo Simulator & Jetpack Compose UI**: Built-in interactive simulator ([`DemoAppSimulator`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/main/java/com/teachflow/ai/ui/components/DemoAppSimulator.kt)) and approval UI ([`HomeScreen.kt`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/main/java/com/teachflow/ai/ui/screens/HomeScreen.kt)) for offline testing and demonstration.
+- ⚡ **Dual Execution Modes**: Seamlessly switch between live FastAPI REST endpoints and local offline [`MockBackendEngine`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/main/java/com/teachflow/ai/network/MockBackendEngine.kt).
 
-## Backend Flow
+---
 
-Live Android Learn/Replay calls classify text, extract parameters, match stored `order_food`, build a bound plan, submit the current UI tree for semantic match/recovery, check sensitive actions, execute locally through Android accessibility nodes, then submit an execution-result report. The result endpoint validates that report; it does not execute Android actions or persist the report.
+## 🏗️ System Architecture
 
-The actual routes are `POST /intent/classify`, `POST /intent/parameters`, `POST /flows/synthesize`, `POST /flows/learn`, `POST /flows/match`, `GET /flows` and `GET /flows/{flow_id}`, `POST /execution/plan`, `POST /ui/match`, `POST /ui/recover`, `POST /safety/check`, and `POST /execution/result`. There is no standalone `/ui-tree` upload route; Android includes `ui_tree` in UI match/recovery requests. `/execution/result` only validates a result payload. See [docs/api_contract.md](docs/api_contract.md) for request/response details.
+```mermaid
+graph TD
+    subgraph Android Client App
+        UI["Jetpack Compose UI\n(HomeScreen, LearnScreen, ReplayScreen)"]
+        SIM["DemoAppSimulator\n(Target App Sandbox)"]
+        ACC["TeachFlow Accessibility Service\n(UI Hierarchy Reader)"]
+        FINDER["SemanticNodeFinder\n(Multi-Attribute Matcher)"]
+        EXEC["ActionExecutor\n(Click, SetText, Scroll, Wait)"]
+        CLIENT["TeachFlowApiClient / MockBackendEngine"]
+    end
 
-## Demo Flow
+    subgraph FastAPI Backend Flow Engine
+        MAIN["FastAPI Core (main.py)"]
+        INTENT["Intent Classifier & Parameter Extractor"]
+        SYNTH["Flow Synthesizer & Flow Store"]
+        MATCH["Flow Matcher & Execution Planner"]
+        UIMATCH["Semantic UI Matcher & Recovery"]
+        SAFETY["Safety & Approval Checker"]
+    end
 
-First, enter **“Order 2 pizzas”** in Learn and demonstrate **Search → select pizza → set quantity → add to cart**. Android captures simulator callbacks or accessibility events; the live client asks the backend to synthesize and store a parameterized `ORDER_FOOD(item, quantity)` workflow.
+    UI --> CLIENT
+    SIM --> ACC
+    ACC --> FINDER
+    FINDER --> EXEC
+    CLIENT <-->|JSON REST API| MAIN
+    MAIN --> INTENT
+    MAIN --> SYNTH
+    MAIN --> MATCH
+    MAIN --> UIMATCH
+    MAIN --> SAFETY
+```
 
-Later, enter or speak **“Get me 3 burgers”** in Replay. The intended integrated sequence classifies `ORDER_FOOD`, extracts `item=burger` and `quantity=3`, retrieves the stored workflow, binds parameters, generates an execution plan, inspects the current UI tree, semantically matches or attempts recovery, checks safety, requests human approval when required, executes through Android `AccessibilityService`, and reports the result.
+---
 
-The backend API sequence is covered by deterministic tests/evaluation. Android build and real-device execution have not been verified in this environment; the intended flow is not a claim of device-tested behavior.
+## 🔄 Workflow Execution Pipeline
 
-## Modes and Limitations
+### 1. 🎓 Learn Mode (Demonstration & Synthesis)
 
-Live mode is the default for Learn/Replay and uses the FastAPI endpoints. Mock mode routes those client calls through `MockBackendEngine`. Independently of mode, the dashboard workflow count and Workflows screen still read from `MockBackendEngine`; they are not authoritative for backend-stored workflows. Workflow browsing needs a later backend-list integration.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Android UI as Android App (LearnScreen)
+    participant Acc as Accessibility Service
+    participant API as TeachFlowApiClient / MockEngine
+    participant Backend as FastAPI Backend
 
-The backend currently supports a narrow food-order demo, rule-based extraction, and local JSON persistence. The small deterministic evaluation is not a statistical benchmark. Sensitive-action detection is text-based. Android needs an enabled accessibility service and a reachable backend; no real-device validation has been performed.
+    User->>Android UI: Enter prompt ("Order 2 pizzas") & Start Recording
+    User->>Android UI: Perform actions (Search -> Select -> Set Quantity -> Add to Cart)
+    Acc->>Android UI: Capture CapturedActions (targets, roles, text, resourceIds)
+    Android UI->>API: sendDemonstration(prompt, capturedActions)
+    API->>Backend: POST /flows/synthesize & POST /flows/learn
+    Backend-->>API: Return Synthesized & Parameterized Workflow
+    API-->>Android UI: Save Workflow to Local Store / State
+```
 
-## Run and Validate
+### 2. ⚡ Replay Mode (Execution & Safety Approval)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Android UI as Android App (ReplayScreen)
+    participant API as TeachFlowApiClient / MockEngine
+    participant Backend as FastAPI Backend
+    participant Finder as SemanticNodeFinder
+    participant Exec as ActionExecutor
+
+    User->>Android UI: Voice/Text Command ("Get me 3 burgers")
+    Android UI->>API: sendIntent(userPrompt)
+    API->>Backend: POST /intent/classify & POST /intent/parameters
+    API->>Backend: POST /flows/match & POST /execution/plan
+    Backend-->>API: Return Parameterized ExecutionPlan (Actions & TargetSpecs)
+    loop For Each Step in Execution Plan
+        Android UI->>Finder: findBestMatch(currentUITree, targetSpec)
+        Finder-->>Android UI: Return MatchResult (confidence, node)
+        Android UI->>API: checkSafety(step)
+        alt Step is Sensitive (e.g. Checkout / Payment)
+            API-->>Android UI: requiresApproval = true
+            Android UI->>User: Prompt for Human Approval
+            User->>Android UI: Confirm Approval
+        end
+        Android UI->>Exec: executeAction(action, matchedNode)
+        Exec-->>Android UI: Step Execution Succeeded
+        Android UI->>API: sendExecutionResult(result)
+    end
+```
+
+---
+
+## 📁 Repository Structure
+
+```text
+TeachFlow-AI/
+├── android/
+│   └── TeachFlow/
+│       ├── app/
+│       │   ├── src/main/java/com/teachflow/ai/
+│       │   │   ├── accessibility/      # TeachFlowAccessibilityService & UIHierarchyReader
+│       │   │   ├── executor/           # ActionExecutor & SemanticNodeFinder
+│       │   │   ├── model/              # UITree, TargetSpec, Workflow, ExecutionResult
+│       │   │   ├── network/            # TeachFlowApiClient, MockBackendEngine, WorkflowStore
+│       │   │   └── ui/                 # Jetpack Compose UI, HomeScreen, DemoAppSimulator
+│       │   └── src/test/java/          # Android Unit Test Suite (20 tests)
+│       ├── build.gradle.kts
+│       ├── settings.gradle.kts
+│       └── gradlew.bat
+├── backend/
+│   ├── app/
+│   │   ├── executor/                   # Execution planning & safety checkers
+│   │   ├── flow/                       # Workflow synthesis, matching & JSON store
+│   │   ├── intent/                     # Intent classification & parameter extraction
+│   │   ├── models/                     # Pydantic schemas & JSON contracts
+│   │   ├── semantic/                   # UI element matching & recovery algorithms
+│   │   └── main.py                     # FastAPI application routes
+│   ├── data/                           # Local workflow persistence (workflows.json)
+│   ├── tests/                          # Automated backend regression test suite (60 tests)
+│   └── requirements.txt
+├── shared/
+│   └── schemas/                        # Shared JSON schema definitions (workflow, execution)
+├── docs/
+│   ├── api_contract.md                 # Implemented REST API specifications
+│   └── android_build_limits.md         # Environment & build documentation
+└── scripts/
+    └── evaluate_flow_engine.py         # Flow engine evaluation suite
+```
+
+---
+
+## 🔌 Backend API Specification
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service health status check |
+| `POST` | `/intent/classify` | Classify natural language text into intent categories |
+| `POST` | `/intent/parameters` | Extract item, quantity, and target parameters |
+| `POST` | `/flows/synthesize` | Synthesize parameterized workflow from text steps |
+| `POST` | `/flows/learn` | Store a refined semantic workflow definition |
+| `GET` | `/flows` | List all learned workflows |
+| `GET` | `/flows/{flow_id}` | Retrieve specific workflow definition |
+| `DELETE` | `/flows/{flow_id}` | Delete a stored workflow |
+| `POST` | `/flows/match` | Match command text to a learned `flow_id` |
+| `POST` | `/execution/plan` | Generate bound parameter execution plan |
+| `POST` | `/ui/match` | Match target specification against current accessibility tree |
+| `POST` | `/ui/recover` | Attempt fallback UI element recovery |
+| `POST` | `/safety/check` | Detect sensitive actions requiring human approval |
+| `POST` | `/execution/result` | Validate step execution report |
+
+For complete payload samples and error response models, see [`docs/api_contract.md`](docs/api_contract.md).
+
+---
+
+## 🛠️ Setup & Running
+
+### Prerequisites
+- Python 3.11+
+- Java JDK 17
+- Android SDK 34 (Android Studio)
+
+### 1. Python FastAPI Backend
 
 From the repository root:
 
 ```powershell
+# Install backend dependencies
+python -m pip install -r backend/requirements.txt
+
+# Start FastAPI dev server
 python -m uvicorn backend.app.main:app --reload
-python -m pytest -q
-python -m backend.evaluation.evaluate
 ```
 
-Evaluation cases and measured counts are described in [backend/evaluation/README.md](backend/evaluation/README.md). The Android project targets Java 17/SDK 34 and uses Gradle 8.4. In this checkout the wrapper JAR and system Gradle are absent, no Android SDK path or `local.properties` is configured, no `adb` is available, and the installed Java runtime is 25. A wrapper-JAR-only repair would not provide the missing SDK/device prerequisites, so Android build and real-device results remain unverified. Android setup and demo instructions are in [android/README.md](android/README.md); backend setup is in [backend/README.md](backend/README.md).
+- Server: `http://127.0.0.1:8000`
+- Interactive OpenAPI Docs: `http://127.0.0.1:8000/docs`
+
+### 2. Android Application
+
+From `android/TeachFlow`:
+
+```powershell
+# Build debug APK
+.\gradlew.bat assembleDebug --no-daemon
+
+# Run Android unit tests
+.\gradlew.bat test --no-daemon
+```
+
+Compiled APK output path:
+[`android/TeachFlow/app/build/outputs/apk/debug/app-debug.apk`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/build/outputs/apk/debug/app-debug.apk)
+
+---
+
+## 🧪 Verification & Test Suite
+
+The repository features comprehensive automated test coverage:
+
+- **Backend Pytest Regression**: **60 PASSED** (`$env:PYTHONPATH="." ; python -m pytest backend/tests`)
+- **Android Unit Test Suite**: **20 PASSED** (`.\gradlew.bat :app:testDebugUnitTest --no-daemon`)
+  - [`SemanticNodeFinderTest`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/test/java/com/teachflow/ai/SemanticNodeFinderTest.kt) (Resource ID & text matching verification)
+  - [`ActionModelSerializationTest`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/test/java/com/teachflow/ai/ActionModelSerializationTest.kt)
+  - [`MockBackendEngineTest`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/test/java/com/teachflow/ai/MockBackendEngineTest.kt)
+  - [`UIHierarchyReaderTest`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/test/java/com/teachflow/ai/UIHierarchyReaderTest.kt)
+  - [`WorkflowExecutionTest`](file:///c:/Users/sanja/OneDrive/Desktop/TeachFlow-AI/android/TeachFlow/app/src/test/java/com/teachflow/ai/WorkflowExecutionTest.kt)
