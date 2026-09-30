@@ -41,7 +41,7 @@ The Android project targets Java 17, SDK 34, and Gradle 8.4. In a complete Andro
 .\gradlew.bat testDebugUnitTest
 ```
 
-In this checkout, `gradle-wrapper.jar` is missing and no system Gradle is installed, so the command cannot run and Android build/test status is unverified. No device test was performed. Backend tests and deterministic evaluation commands are documented in [../backend/README.md](../backend/README.md) and [../backend/evaluation/README.md](../backend/evaluation/README.md).
+In this checkout, `gradlew.bat` and `gradle-wrapper.properties` (Gradle 8.4) exist, but `gradle-wrapper.jar` is missing; no system Gradle is installed. The environment has no `ANDROID_HOME`/`ANDROID_SDK_ROOT`, no `android/TeachFlow/local.properties`, no Android SDK in the checked common locations, and no `adb`. Java 25 is on PATH, while this project targets Java 17. Restoring only the wrapper JAR would therefore not resolve all build prerequisites. Android build/test status is unverified, and no emulator or device test was performed. Backend tests and deterministic evaluation commands are documented in [../backend/README.md](../backend/README.md) and [../backend/evaluation/README.md](../backend/evaluation/README.md).
 
 ## Known Limitations
 

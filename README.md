@@ -41,4 +41,4 @@ python -m pytest -q
 python -m backend.evaluation.evaluate
 ```
 
-Evaluation cases and measured counts are described in [backend/evaluation/README.md](backend/evaluation/README.md). The Android project targets Java 17/SDK 34. Its `gradle-wrapper.jar` is absent and no system Gradle is available in the current environment, so Android build/unit-test success is unverified. Android setup and demo instructions are in [android/README.md](android/README.md); backend setup is in [backend/README.md](backend/README.md).
+Evaluation cases and measured counts are described in [backend/evaluation/README.md](backend/evaluation/README.md). The Android project targets Java 17/SDK 34 and uses Gradle 8.4. In this checkout the wrapper JAR and system Gradle are absent, no Android SDK path or `local.properties` is configured, no `adb` is available, and the installed Java runtime is 25. A wrapper-JAR-only repair would not provide the missing SDK/device prerequisites, so Android build and real-device results remain unverified. Android setup and demo instructions are in [android/README.md](android/README.md); backend setup is in [backend/README.md](backend/README.md).
