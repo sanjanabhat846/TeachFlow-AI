@@ -9,7 +9,7 @@ from typing import Any
 _SENSITIVE_CATEGORIES = (
     ("checkout", re.compile(r"\bcheckout\b", re.IGNORECASE)),
     ("payment", re.compile(r"\bpay(?:ment|ments)?\b", re.IGNORECASE)),
-    ("authentication", re.compile(r"\b(?:auth(?:entication|enticate|orization)?|log\s*in|sign\s*in)\b", re.IGNORECASE)),
+    ("authentication", re.compile(r"\b(?:auth(?:entication|enticate|orization)?|log[ -]*in|sign[ -]*in)\b", re.IGNORECASE)),
     ("password", re.compile(r"\b(?:password|passcode|pin)\b", re.IGNORECASE)),
     ("OTP", re.compile(r"\b(?:otp|one[ -]time (?:password|code)|verification code)\b", re.IGNORECASE)),
 )

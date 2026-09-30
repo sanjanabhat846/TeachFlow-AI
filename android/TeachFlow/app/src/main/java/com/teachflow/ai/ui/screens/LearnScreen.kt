@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.teachflow.ai.accessibility.TeachFlowAccessibilityService
 import com.teachflow.ai.model.CapturedAction
+import com.teachflow.ai.model.TargetSpec
 import com.teachflow.ai.network.TeachFlowApiClient
 import com.teachflow.ai.ui.components.DemoAppSimulator
 import com.teachflow.ai.ui.theme.AccentPurple
@@ -29,6 +30,7 @@ fun LearnScreen() {
     var isRecording by remember { mutableStateOf(false) }
     var statusText by remember { mutableStateOf("Waiting for demonstration...") }
     var learnedWorkflowSummary by remember { mutableStateOf<String?>(null) }
+    var simulatedActions by remember { mutableStateOf<List<CapturedAction>>(emptyList()) }
     val capturedActions by TeachFlowAccessibilityService.capturedActions.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -87,6 +89,7 @@ fun LearnScreen() {
                                 isRecording = true
                                 statusText = "Recording live demonstration... Perform actions below."
                                 learnedWorkflowSummary = null
+                                simulatedActions = emptyList()
                                 TeachFlowAccessibilityService.startRecording()
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -103,7 +106,8 @@ fun LearnScreen() {
                         Button(
                             onClick = {
                                 isRecording = false
-                                val actions = TeachFlowAccessibilityService.stopRecording()
+                                val accessibilityActions = TeachFlowAccessibilityService.stopRecording()
+                                val actions = simulatedActions.ifEmpty { accessibilityActions }
                                 statusText = "Synthesizing parameterized workflow..."
                                 scope.launch {
                                     val result = TeachFlowApiClient.sendDemonstration(taskPrompt, actions)
@@ -111,8 +115,8 @@ fun LearnScreen() {
                                         statusText = "Workflow learned successfully!"
                                         learnedWorkflowSummary = "Synthesized Workflow: ${workflow.intent}(${workflow.parameters.keys.joinToString(", ")})"
                                     }.onFailure { err ->
-                                        statusText = "Synthesis warning: ${err.message}. Defaulting to mock synthesis."
-                                        learnedWorkflowSummary = "Workflow learned: ORDER_FOOD(item, quantity)"
+                                        statusText = "Workflow learning failed: ${err.message}"
+                                        learnedWorkflowSummary = null
                                     }
                                 }
                             },
@@ -169,7 +173,47 @@ fun LearnScreen() {
             DemoAppSimulator(
                 onSimulatedAction = { actionType, label, resId ->
                     if (isRecording) {
-                        // Capture action in service memory
+                        val target = when {
+                            actionType == "type" -> TargetSpec(
+                                role = "edit_text",
+                                contentDescription = "Search food",
+                                resourceId = resId,
+                                className = "android.widget.EditText",
+                                clickable = false,
+                                enabled = true
+                            )
+                            actionType == "set_quantity" -> TargetSpec(
+                                role = "quantity_picker",
+                                contentDescription = "quantity_picker",
+                                resourceId = resId,
+                                clickable = false,
+                                enabled = true
+                            )
+                            resId == "product_item" -> TargetSpec(
+                                role = "product",
+                                text = label,
+                                contentDescription = label,
+                                resourceId = resId,
+                                clickable = true,
+                                enabled = true
+                            )
+                            else -> TargetSpec(
+                                role = "button",
+                                text = label,
+                                contentDescription = label,
+                                resourceId = resId,
+                                className = "android.widget.Button",
+                                clickable = true,
+                                enabled = true
+                            )
+                        }
+                        simulatedActions = simulatedActions + CapturedAction(
+                            action = actionType,
+                            target = target,
+                            value = label.takeIf {
+                                actionType == "type" || actionType == "set_quantity"
+                            }
+                        )
                     }
                 }
             )

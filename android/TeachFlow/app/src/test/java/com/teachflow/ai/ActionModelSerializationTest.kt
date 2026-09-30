@@ -5,6 +5,8 @@ import com.teachflow.ai.model.ExecutionResult
 import com.teachflow.ai.model.TargetSpec
 import com.teachflow.ai.model.Workflow
 import com.teachflow.ai.model.WorkflowStep
+import com.teachflow.ai.network.parameterizeDemonstratedTarget
+import com.teachflow.ai.network.isDemonstratedItemTarget
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
@@ -76,5 +78,33 @@ class ActionModelSerializationTest {
         val deserialized = json.decodeFromString<Workflow>(jsonStr)
         assertEquals("ORDER_FOOD", deserialized.intent)
         assertEquals("burger", deserialized.parameters["item"])
+    }
+
+    @Test
+    fun testDemonstratedProductTargetUsesRuntimeItemParameter() {
+        val target = TargetSpec(
+            role = "product",
+            text = "pizza",
+            contentDescription = "pizza",
+            resourceId = "product_item",
+            clickable = true
+        )
+
+        val reusableTarget = parameterizeDemonstratedTarget(target)
+
+        assertEquals("{{item}}", reusableTarget?.text)
+        assertEquals("{{item}}", reusableTarget?.contentDescription)
+        assertEquals("product_item", reusableTarget?.resourceId)
+    }
+
+    @Test
+    fun testSearchTapIsNotCapturedAsDemonstratedProduct() {
+        val searchTarget = TargetSpec(role = "edit_text", text = "Search")
+        val productTarget = TargetSpec(role = "text_view", text = "Pizza")
+        val cartTarget = TargetSpec(role = "button", text = "Add to Cart")
+
+        assertFalse(isDemonstratedItemTarget(searchTarget, "pizza"))
+        assertTrue(isDemonstratedItemTarget(productTarget, "pizza"))
+        assertFalse(isDemonstratedItemTarget(cartTarget, "pizza"))
     }
 }

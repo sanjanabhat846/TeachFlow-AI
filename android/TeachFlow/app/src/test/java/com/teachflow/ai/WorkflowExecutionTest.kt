@@ -49,6 +49,22 @@ class WorkflowExecutionTest {
     }
 
     @Test
+    fun testSensitiveActionDetectionForHyphenatedAuthentication() {
+        val signInStep = WorkflowStep(
+            stepIndex = 1,
+            action = "tap",
+            target = TargetSpec(text = "Sign-in"),
+            requiresApproval = false
+        )
+        val logInStep = signInStep.copy(
+            target = TargetSpec(text = "Log-in")
+        )
+
+        assertTrue(ActionExecutor.isSensitiveAction(signInStep))
+        assertTrue(ActionExecutor.isSensitiveAction(logInStep))
+    }
+
+    @Test
     fun testNonSensitiveAction() {
         val normalStep = WorkflowStep(
             stepIndex = 1,

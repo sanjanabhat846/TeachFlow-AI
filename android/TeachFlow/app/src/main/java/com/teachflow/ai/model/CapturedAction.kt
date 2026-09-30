@@ -12,7 +12,15 @@ data class TargetSpec(
     @SerialName("content_description")
     val contentDescription: String? = null,
     @SerialName("resource_id")
-    val resourceId: String? = null
+    val resourceId: String? = null,
+    @SerialName("class_name")
+    val className: String? = null,
+    @SerialName("clickable")
+    val clickable: Boolean? = null,
+    @SerialName("enabled")
+    val enabled: Boolean? = null,
+    @SerialName("context")
+    val context: String? = null
 )
 
 @Serializable

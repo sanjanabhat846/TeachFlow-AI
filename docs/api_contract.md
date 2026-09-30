@@ -33,6 +33,8 @@ The API currently has no authentication and no versioned URL prefix. Keep it on 
 | `POST` | `/ui/match` | Match a semantic target against a current UI tree |
 | `POST` | `/ui/recover` | Re-match after a UI change or request clarification |
 
+These are the implemented route names; there are no shorthand aliases such as `/intent`, `/learn`, `/match`, or `/execute-plan`. Intent uses `/intent/classify` and `/intent/parameters`; learning uses `/flows/learn`; workflow matching uses `/flows/match`; execution planning uses `/execution/plan`. `/flows` is a `GET` list route. There is no standalone `/ui-tree` upload route: the Android client supplies `ui_tree` as part of `/ui/match` and `/ui/recover` requests.
+
 ## Common Error Shape
 
 Request validation failures return `422` with FastAPI's `detail` array. The exact `loc`, `type`, and `input` values depend on the invalid field.
@@ -100,6 +102,8 @@ Response `200` (`ParameterExtractionResponse`):
 
 For unsupported or unrecognized parameter combinations, `parameters` may be `{}`. The current food extractor returns canonical item text and integer quantity.
 
+A quantity omitted from an otherwise recognized food command defaults to `1`. Positive digit quantities and supported spoken counts (`one` through `ten`) return positive integers. An explicit zero, negative, fractional, ambiguous, or unrecognized quantity returns `parameters: {}` rather than silently defaulting to one. This is still a `200` parameter-extraction response, not a validation `422`.
+
 ## 3. Demonstrations and Workflows
 
 ### Demonstration format
@@ -131,6 +135,7 @@ Response `200` (`WorkflowDefinition`):
 ```
 
 The endpoint saves the synthesized workflow and replaces any stored workflow with the same `flow_id`.
+This is a deterministic text-description synthesizer, not an endpoint for raw Android touch events or uploaded UI trees. The Android Learn client separately sends captured semantic steps to `/flows/learn` to refine the stored template.
 
 ### `POST /flows/learn`
 
@@ -271,7 +276,7 @@ A valid report returns `204 No Content` with an empty response body. This route 
 
 ## 5. Current Android UI Tree and Semantic Targets
 
-The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `elements` is optional and defaults to `[]`. Each element requires `id`; `role`, `text`, `content_description`, and `resource_id` default to `""`; `clickable` defaults to `false`; `enabled` defaults to `true`. Unknown fields are rejected.
+The UI tree is nested in the request body as `ui_tree`. `screen` is optional and defaults to `""`; `timestamp` may be an integer or `null`; `elements` defaults to `[]`. Each element requires `id`; `role`, `class_name`, `text`, `content_description`, `resource_id`, and `context` default to `""`; `clickable` and `editable` default to `false`; `enabled` defaults to `true`; `scrollable` defaults to `false`; and `bounds` may be a string or `null`. `context` may describe nearby labeled ancestors to support safe disambiguation across layouts. Unknown fields are rejected. Bounds are retained as supporting metadata, not used as the primary target selector.
 
 ### `POST /ui/match`
 
@@ -286,6 +291,7 @@ Request body (`target` and `ui_tree` required):
       {
         "id": "add_button",
         "role": "button",
+        "class_name": "android.widget.Button",
         "text": "Add",
         "content_description": "Add item to cart",
         "resource_id": "add_btn",
@@ -303,7 +309,7 @@ Response `200` (`UiMatchResponse`):
 {"matched": true, "node_id": "add_button", "confidence": 0.65}
 ```
 
-A non-confident match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`.
+A non-confident or ambiguous match still returns `200`, with `matched:false`, `node_id:null`, and a confidence score. The acceptance threshold is `0.6`; similarly scoring candidates require clarification instead of first-candidate selection. Matching uses role, text, content description, resource ID, class, clickability, enabled state, and optional hierarchy context. Disabled elements are excluded, and a target marked `clickable:true` only matches a clickable element. Bounds are not used to select or execute actions.
 
 ### `POST /ui/recover`
 
@@ -348,6 +354,14 @@ Response `200` (`SafetyCheckResult`):
 
 A routine plan returns `{"requires_approval":false,"reason":null}`. Current text-based detection covers checkout, payment/pay, authentication/login/sign-in, password/passcode/PIN, and OTP or verification-code wording. The route reports the requirement; it does not pause execution or collect approval. Android must check the plan and obtain explicit user approval before executing a sensitive action.
 
+Authentication matching accepts labels such as `Sign in`, `Sign-in`, `Log in`, and `Log-in` in addition to authentication/login wording. Detection remains keyword-based and is not a comprehensive security classifier.
+
+## Intended Android Request Sequence
+
+For the food-order demo, Android sends recognized or typed text to `/intent/classify` and `/intent/parameters`, selects the stored flow through `/flows/match`, loads it with `/flows/{flow_id}`, and requests substituted actions from `/execution/plan`. For each target, Android submits its current accessibility tree to `/ui/match`; after a failed match it may refresh the tree and use `/ui/recover`. It checks each action with `/safety/check`, performs accessibility actions on the Android device, then posts a step result to `/execution/result`.
+
+This documents the client/backend contract, not a claim of successful real-device execution. The backend does not execute Android actions. `/execution/result` validates its request and returns `204`; it does not persist the result.
+
 ## Required and Optional Fields
 
 Pydantic request models reject unknown fields. In brief:
@@ -359,4 +373,4 @@ Pydantic request models reject unknown fields. In brief:
 - Required execution report fields: `success`, `step`.
 - Optional safety data: `actions` defaults to an empty array.
 
-The shared `UiTreeRequest` Pydantic model is not currently mounted as a standalone route. Use the nested `ui_tree` shape shown above.
+The shared `UiTreeRequest` Pydantic model is not currently mounted as a standalone route. Use the nested `ui_tree` shape shown above. Android sends the current accessibility tree with each semantic match request; there is no coordinate-based execution endpoint.

@@ -22,6 +22,9 @@ def test_safety_checker_requires_approval_for_sensitive_actions() -> None:
     [
         ("Pay now", "payment"),
         ("Sign in", "authentication"),
+        ("Sign-in", "authentication"),
+        ("Log-in", "authentication"),
+        ("Login", "authentication"),
         ("Password", "password"),
         ("Enter OTP", "otp"),
     ],

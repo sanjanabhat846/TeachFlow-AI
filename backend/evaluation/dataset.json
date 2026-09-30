@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "description": "Small deterministic evaluation set for the implemented TeachFlow AI backend contracts.",
+  "workflow": {
+    "flow_id": "order_food",
+    "intent": "ORDER_FOOD",
+    "parameters": ["item", "quantity"],
+    "steps": [
+      {
+        "action": "search",
+        "target": {"role": "edit_text"},
+        "value": "{{item}}"
+      },
+      {
+        "action": "set_quantity",
+        "target": {"role": "quantity_picker"},
+        "value": "{{quantity}}"
+      },
+      {
+        "action": "tap",
+        "target": {"role": "button", "text": "Add to Cart"}
+      }
+    ]
+  },
+  "intent_extraction": [
+    {"id": "order_2_pizzas", "text": "Order 2 pizzas", "expected": "ORDER_FOOD"},
+    {"id": "get_3_burgers", "text": "Get me 3 burgers", "expected": "ORDER_FOOD"},
+    {"id": "order_1_sandwich", "text": "Order 1 sandwich", "expected": "ORDER_FOOD"},
+    {"id": "unsupported_joke", "text": "Tell me a joke", "expected": "UNKNOWN"}
+  ],
+  "parameter_extraction": [
+    {
+      "id": "pizza_item_and_quantity",
+      "text": "Order 2 pizzas",
+      "expected": {"intent": "ORDER_FOOD", "parameters": {"item": "pizza", "quantity": 2}}
+    },
+    {
+      "id": "burger_item_and_quantity",
+      "text": "Get me 3 burgers",
+      "expected": {"intent": "ORDER_FOOD", "parameters": {"item": "burger", "quantity": 3}}
+    },
+    {
+      "id": "sandwich_item_and_quantity",
+      "text": "Order 1 sandwich",
+      "expected": {"intent": "ORDER_FOOD", "parameters": {"item": "sandwich", "quantity": 1}}
+    },
+    {
+      "id": "missing_item",
+      "text": "Order 2",
+      "expected": {"intent": "UNKNOWN", "parameters": {}}
+    },
+    {
+      "id": "missing_quantity_defaults_to_one",
+      "text": "Order pizzas",
+      "expected": {"intent": "ORDER_FOOD", "parameters": {"item": "pizza", "quantity": 1}}
+    },
+    {
+      "id": "zero_quantity_should_be_rejected",
+      "text": "Order 0 pizzas",
+      "expected_invalid": true
+    },
+    {
+      "id": "negative_quantity_should_be_rejected",
+      "text": "Order -2 pizzas",
+      "expected_invalid": true
+    },
+    {
+      "id": "spoken_negative_quantity_should_be_rejected",
+      "text": "Order negative 2 pizzas",
+      "expected_invalid": true
+    },
+    {
+      "id": "fractional_quantity_should_be_rejected",
+      "text": "Order 1.5 pizzas",
+      "expected_invalid": true
+    },
+    {
+      "id": "nonnumeric_quantity_should_be_rejected",
+      "text": "Order many pizzas",
+      "expected_invalid": true
+    }
+  ],
+  "workflow_matching": [
+    {
+      "id": "food_command_matches_learned_flow",
+      "kind": "match",
+      "text": "Get me 3 burgers",
+      "expected_flow_id": "order_food"
+    },
+    {
+      "id": "runtime_values_bind_into_plan",
+      "kind": "bind",
+      "intent": "ORDER_FOOD",
+      "flow_id": "order_food",
+      "parameters": {"item": "burger", "quantity": 3},
+      "expected_actions": [
+        {"action": "search", "target": {"role": "edit_text"}, "value": "burger"},
+        {"action": "set_quantity", "target": {"role": "quantity_picker"}, "value": 3},
+        {"action": "tap", "target": {"role": "button", "text": "Add to Cart"}}
+      ]
+    },
+    {
+      "id": "nonexistent_workflow_is_404",
+      "kind": "missing",
+      "intent": "ORDER_FOOD",
+      "flow_id": "no_such_flow",
+      "expected_status": 404
+    }
+  ],
+  "semantic_ui_matching": [
+    {
+      "id": "exact_match",
+      "target": {"role": "button", "text": "Add to Cart"},
+      "ui_tree": {"elements": [{"id": "add_cart", "role": "button", "text": "Add to Cart", "enabled": true}]},
+      "expected_matched": true,
+      "expected_node_id": "add_cart"
+    },
+    {
+      "id": "text_variation_add",
+      "target": {"role": "button", "text": "Add to Cart", "context": "Cart actions"},
+      "ui_tree": {"elements": [{"id": "add", "role": "button", "text": "Add", "content_description": "Add item to cart", "context": "Cart actions", "clickable": true, "enabled": true}]},
+      "expected_matched": true,
+      "expected_node_id": "add"
+    },
+    {
+      "id": "resource_id_variation",
+      "target": {"role": "button", "text": "Add to Cart", "resource_id": "food:id/add_cart"},
+      "ui_tree": {"elements": [{"id": "cart_add", "role": "button", "text": "Add", "resource_id": "food:id/cart_add_action", "enabled": true}]},
+      "expected_matched": true,
+      "expected_node_id": "cart_add"
+    },
+    {
+      "id": "hierarchy_context_variation",
+      "target": {"role": "quantity_picker", "text": "Quantity", "context": "Order quantity selector"},
+      "ui_tree": {"elements": [{"id": "quantity_decrement", "role": "button", "content_description": "Decrease quantity", "context": "Order quantity selector", "clickable": true, "enabled": true}]},
+      "expected_matched": true,
+      "expected_node_id": "quantity_decrement"
+    },
+    {
+      "id": "disabled_element_rejected",
+      "target": {"role": "button", "text": "Add to Cart", "clickable": true},
+      "ui_tree": {"elements": [{"id": "disabled_add", "role": "button", "text": "Add to Cart", "clickable": true, "enabled": false}]},
+      "expected_matched": false,
+      "expected_node_id": null
+    },
+    {
+      "id": "missing_element_rejected",
+      "target": {"role": "button", "text": "Add to Cart"},
+      "ui_tree": {"elements": [{"id": "help", "role": "button", "text": "Help", "enabled": true}]},
+      "expected_matched": false,
+      "expected_node_id": null
+    },
+    {
+      "id": "ambiguous_candidates_rejected",
+      "target": {"role": "button", "text": "Add to Cart", "clickable": true},
+      "ui_tree": {"elements": [{"id": "add_one", "role": "button", "text": "Add", "clickable": true, "enabled": true}, {"id": "add_two", "role": "button", "text": "Add", "clickable": true, "enabled": true}]},
+      "expected_matched": false,
+      "expected_node_id": null
+    },
+    {
+      "id": "low_confidence_candidate_rejected",
+      "target": {"role": "button", "text": "Checkout"},
+      "ui_tree": {"elements": [{"id": "continue", "role": "text_view", "text": "Continue", "enabled": true}]},
+      "expected_matched": false,
+      "expected_node_id": null
+    }
+  ],
+  "recovery": [
+    {
+      "id": "variation_recovers",
+      "target": {"role": "button", "text": "Add to Cart", "context": "Cart actions"},
+      "ui_tree": {"elements": [{"id": "add", "role": "button", "text": "Add", "content_description": "Add item", "context": "Cart actions", "clickable": true, "enabled": true}]},
+      "expected_matched": true,
+      "expected_clarification": false
+    },
+    {
+      "id": "missing_target_requires_clarification",
+      "target": {"role": "button", "text": "Add to Cart"},
+      "ui_tree": {"elements": [{"id": "help", "role": "button", "text": "Help", "enabled": true}]},
+      "expected_matched": false,
+      "expected_clarification": true
+    },
+    {
+      "id": "low_confidence_stops_without_node",
+      "target": {"role": "button", "text": "Checkout"},
+      "ui_tree": {"elements": [{"id": "continue", "role": "text_view", "text": "Continue", "enabled": true}]},
+      "expected_matched": false,
+      "expected_node_id": null,
+      "expected_clarification": true
+    }
+  ],
+  "safety": [
+    {"id": "ordinary_add_does_not_checkpoint", "actions": [{"action": "tap", "target": {"text": "Add to Cart"}}], "expected_approval": false},
+    {"id": "checkout_requires_approval", "actions": [{"action": "tap", "target": {"text": "Checkout"}}], "expected_approval": true},
+    {"id": "payment_requires_approval", "actions": [{"action": "tap", "target": {"text": "Pay now"}}], "expected_approval": true},
+    {"id": "password_requires_approval", "actions": [{"action": "type", "target": {"text": "Password"}}], "expected_approval": true},
+    {"id": "otp_requires_approval", "actions": [{"action": "type", "target": {"text": "Enter OTP"}}], "expected_approval": true},
+    {"id": "authentication_requires_approval", "actions": [{"action": "tap", "target": {"text": "Sign in"}}], "expected_approval": true},
+    {"id": "hyphenated_authentication_requires_approval", "actions": [{"action": "tap", "target": {"text": "Sign-in"}}], "expected_approval": true}
+  ],
+  "end_to_end": [
+    {
+      "id": "burger_order_backend_sequence",
+      "command": "Get me 3 burgers",
+      "expected_intent": "ORDER_FOOD",
+      "expected_parameters": {"item": "burger", "quantity": 3},
+      "expected_flow_id": "order_food",
+      "expected_ui_node_id": "add_button",
+      "expected_safety_approval": false,
+      "expected_result_status": 204
+    }
+  ],
+  "android_static_checks": [
+    {
+      "id": "safety_approval_gate_precedes_accessibility_execution",
+      "file": "android/TeachFlow/app/src/main/java/com/teachflow/ai/ui/screens/ReplayScreen.kt"
+    }
+  ]
+}

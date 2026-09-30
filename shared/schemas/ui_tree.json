@@ -5,7 +5,7 @@
     {
       "id": "node_1",
       "role": "edit_text",
-      "className": "android.widget.EditText",
+      "class_name": "android.widget.EditText",
       "text": "Search",
       "content_description": "Search food items",
       "resource_id": "com.example.foodapp:id/search_box",
@@ -13,12 +13,13 @@
       "enabled": true,
       "editable": true,
       "scrollable": false,
-      "bounds": "[0,100][1080,200]"
+      "bounds": "[0,100][1080,200]",
+      "context": "Food ordering > Search"
     },
     {
       "id": "node_2",
       "role": "button",
-      "className": "android.widget.Button",
+      "class_name": "android.widget.Button",
       "text": "Add to Cart",
       "content_description": "Add selected item to cart",
       "resource_id": "com.example.foodapp:id/add_cart",
@@ -26,7 +27,8 @@
       "enabled": true,
       "editable": false,
       "scrollable": false,
-      "bounds": "[100,500][980,620]"
+      "bounds": "[100,500][980,620]",
+      "context": "Food ordering > Cart actions"
     }
   ]
 }

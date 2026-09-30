@@ -1,27 +1,40 @@
 # TeachFlow AI Backend
 
-This is the Python backend for the TeachFlow AI hackathon project.
+FastAPI backend for the deterministic TeachFlow AI food-order workflow demo.
 
-## API
+## Run
 
-Run the API from the repository root with:
+From the repository root:
 
 ```powershell
 python -m uvicorn backend.app.main:app --reload
 ```
 
-The service exposes health, intent and parameter extraction, workflow synthesis and
-storage, flow matching, execution planning, approval checks, and semantic UI matching
-and recovery. Interactive API documentation is available at `/docs` while the server
-is running.
+The API docs are available at `/docs`. The service uses rule-based intent and parameter extraction and stores workflows in local JSON at `backend/data/workflows.json`.
 
-For Android-facing request and response examples, required fields, errors, and safety
-behavior, see [../docs/api_contract.md](../docs/api_contract.md).
+## Integration Flow
 
-## Modules
+`POST /intent/classify` and `/intent/parameters` process voice-recognized or typed text. Learn calls `/flows/synthesize` with demonstration descriptions and `/flows/learn` with captured semantic steps. Replay calls `/flows/match`, loads `/flows/{flow_id}`, and requests a bound action list from `/execution/plan`. Android supplies its current tree inside `/ui/match` or `/ui/recover`, checks each step with `/safety/check`, performs accessibility actions locally, and posts a report to `/execution/result`.
 
-- `app/intent`: rule-based intent and parameter extraction
-- `app/flow`: workflow synthesis, matching, and JSON-backed storage
-- `app/semantic`: semantic UI matching and recovery
-- `app/executor`: execution planning and approval checks
-- `app/main.py`: FastAPI application and HTTP routes
+There is no `/intent`, `/learn`, `/match`, `/execute-plan`, or standalone `/ui-tree` route. Use the concrete routes documented in [../docs/api_contract.md](../docs/api_contract.md). `/execution/result` validates a report only; safety checks report whether approval is needed but do not themselves pause a client.
+
+## Tests and Evaluation
+
+From the repository root:
+
+```powershell
+python -m pytest -q
+python -m backend.evaluation.evaluate
+```
+
+The evaluation is a small deterministic contract suite, not a statistical benchmark. See [evaluation/README.md](evaluation/README.md) for actual counts and boundaries.
+
+## Modules and Limits
+
+- `app/intent`: rule-based intent/parameter extraction; missing quantity defaults to one; invalid explicit quantity yields empty parameters.
+- `app/flow`: deterministic food-flow synthesis/matching and JSON-backed storage.
+- `app/semantic`: semantic matching with a confidence cutoff and clarification on ambiguous/weak recovery.
+- `app/executor`: parameter binding and safety detection.
+- `app/main.py`: actual HTTP routes.
+
+The backend does not operate Android UI, authenticate callers, store execution results, or provide production-grade persistence.

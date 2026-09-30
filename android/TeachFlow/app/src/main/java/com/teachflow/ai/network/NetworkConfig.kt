@@ -13,7 +13,7 @@ object NetworkConfig {
     private val _baseUrl = MutableStateFlow(DEFAULT_BASE_URL)
     val baseUrl: StateFlow<String> = _baseUrl
 
-    private val _useMockBackend = MutableStateFlow(true)
+    private val _useMockBackend = MutableStateFlow(false)
     val useMockBackend: StateFlow<Boolean> = _useMockBackend
 
     fun setBaseUrl(url: String) {

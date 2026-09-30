@@ -9,7 +9,7 @@ data class UIElement(
     val id: String,
     @SerialName("role")
     val role: String,
-    @SerialName("className")
+    @SerialName("class_name")
     val className: String = "",
     @SerialName("text")
     val text: String? = null,
@@ -26,5 +26,7 @@ data class UIElement(
     @SerialName("scrollable")
     val scrollable: Boolean = false,
     @SerialName("bounds")
-    val bounds: String? = null
+    val bounds: String? = null,
+    @SerialName("context")
+    val context: String = ""
 )
