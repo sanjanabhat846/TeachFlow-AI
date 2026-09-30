@@ -59,7 +59,7 @@ object TeachFlowApiClient {
 
     suspend fun sendDemonstration(prompt: String, capturedActions: List<CapturedAction>): Result<Workflow> = withContext(Dispatchers.IO) {
         if (NetworkConfig.useMockBackend.value) {
-            val workflow = MockBackendEngine.learnWorkflow(prompt, capturedActions)
+            val workflow = MockBackendEngine.learnWorkflow(context = null, prompt = prompt, capturedActions = capturedActions)
             return@withContext Result.success(workflow)
         }
 

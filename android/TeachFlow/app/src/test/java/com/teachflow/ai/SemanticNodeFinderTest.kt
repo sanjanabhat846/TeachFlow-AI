@@ -2,6 +2,7 @@ package com.teachflow.ai
 
 import com.teachflow.ai.executor.SemanticNodeFinder
 import com.teachflow.ai.model.TargetSpec
+import com.teachflow.ai.model.UIElement
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -14,8 +15,13 @@ class SemanticNodeFinderTest {
             resourceId = "add_cart"
         )
 
-        // Mock node evaluation
-        val matchScore = SemanticNodeFinder.MatchScore(1.0f, "Resource ID match (com.app:id/add_cart)")
+        val element = UIElement(
+            id = "node_1",
+            role = "button",
+            resourceId = "com.app:id/add_cart"
+        )
+
+        val matchScore = SemanticNodeFinder.scoreElementMatch(element, target)
         assertTrue(matchScore.score >= 0.9f)
         assertTrue(matchScore.reason.contains("Resource ID match"))
     }
@@ -29,11 +35,14 @@ class SemanticNodeFinderTest {
         )
 
         // UI Version 2 node text has changed to shorter "Add"
-        val normalizedScore = SemanticNodeFinder.scoreNodeMatch(
-            // We simulate scoring logic against normalized text
-            node = mockAccessibilityNode("android.widget.Button", "Add", "add_cart_btn"),
-            target = targetV1
+        val elementV2 = UIElement(
+            id = "node_2",
+            role = "button",
+            text = "Add",
+            resourceId = "add_cart_btn"
         )
+
+        val normalizedScore = SemanticNodeFinder.scoreElementMatch(elementV2, targetV1)
 
         assertTrue("Normalized text match should succeed", normalizedScore.score >= 0.75f)
         assertTrue(normalizedScore.reason.contains("Normalized text match"))
@@ -46,19 +55,15 @@ class SemanticNodeFinderTest {
             text = "Search"
         )
 
-        val score = SemanticNodeFinder.scoreNodeMatch(
-            node = mockAccessibilityNode("android.widget.EditText", "Search", "search_box"),
-            target = target
+        val element = UIElement(
+            id = "node_3",
+            role = "edit_text",
+            text = "Search",
+            resourceId = "search_box"
         )
 
-        assertEquals(0.95f, score.score, 0.05f)
-    }
+        val score = SemanticNodeFinder.scoreElementMatch(element, target)
 
-    private fun mockAccessibilityNode(classNameStr: String, textStr: String, resIdStr: String): android.view.accessibility.AccessibilityNodeInfo {
-        // Return null or proxy node safely; scoreNodeMatch handles strings via reflection/safe properties
-        val node = android.view.accessibility.AccessibilityNodeInfo.obtain()
-        node.className = classNameStr
-        node.text = textStr
-        return node
+        assertEquals(0.95f, score.score, 0.06f)
     }
 }

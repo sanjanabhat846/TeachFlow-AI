@@ -168,11 +168,11 @@ object ActionExecutor {
 
     fun resolveValue(template: String?, parameters: Map<String, String>): String? {
         if (template == null) return null
-        var resolved = template
+        var resolvedStr: String = template
         parameters.forEach { (key, value) ->
-            resolved = resolved.replace("{{$key}}", value)
+            resolvedStr = resolvedStr.replace("{{$key}}", value)
                 .replace("{$key}", value)
         }
-        return resolved
+        return resolvedStr
     }
 }

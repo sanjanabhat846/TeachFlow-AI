@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.teachflow.ai.network.MockBackendEngine
 import com.teachflow.ai.ui.components.ApprovalDialog
 import com.teachflow.ai.ui.screens.*
 import com.teachflow.ai.ui.theme.TeachFlowTheme
@@ -26,6 +27,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize local workflow persistence
+        MockBackendEngine.initPersistence(this)
 
         setContent {
             TeachFlowTheme {

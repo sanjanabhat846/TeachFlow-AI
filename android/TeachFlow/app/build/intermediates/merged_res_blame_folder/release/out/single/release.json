@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.teachflow.ai.app-merged_res-41:/xml_data_extraction_rules.xml.flat",
+        "source": "com.teachflow.ai.app-main-42:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.teachflow.ai.app-merged_res-41:/xml_backup_rules.xml.flat",
+        "source": "com.teachflow.ai.app-main-42:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.teachflow.ai.app-merged_res-41:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.teachflow.ai.app-main-42:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.teachflow.ai.app-merged_res-41:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.teachflow.ai.app-main-42:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.teachflow.ai.app-merged_res-41:/xml_accessibility_service_config.xml.flat",
+        "source": "com.teachflow.ai.app-main-42:/xml/accessibility_service_config.xml"
+    }
+]

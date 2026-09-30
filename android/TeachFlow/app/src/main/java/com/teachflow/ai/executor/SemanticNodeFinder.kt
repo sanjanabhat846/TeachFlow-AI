@@ -69,11 +69,15 @@ object SemanticNodeFinder {
     }
 
     fun scoreNodeMatch(node: AccessibilityNodeInfo, target: TargetSpec): MatchScore {
-        val nodeResId = node.viewIdResourceName?.lowercase() ?: ""
-        val nodeText = node.text?.toString()?.lowercase() ?: ""
-        val nodeDesc = node.contentDescription?.toString()?.lowercase() ?: ""
-        val nodeClass = node.className?.toString() ?: ""
-        val nodeRole = UIHierarchyReader.mapClassToRole(nodeClass, nodeText, nodeResId, node.isEditable)
+        val element = UIHierarchyReader.createUIElement(node, "temp_node")
+        return scoreElementMatch(element, target)
+    }
+
+    fun scoreElementMatch(element: UIElement, target: TargetSpec): MatchScore {
+        val nodeResId = element.resourceId?.lowercase() ?: ""
+        val nodeText = element.text?.lowercase() ?: ""
+        val nodeDesc = element.contentDescription?.lowercase() ?: ""
+        val nodeRole = element.role.lowercase()
 
         val targetResId = target.resourceId?.lowercase() ?: ""
         val targetText = target.text?.lowercase() ?: ""

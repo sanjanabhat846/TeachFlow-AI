@@ -1,6 +1,6 @@
 package com.teachflow.ai.ui.components
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,18 +12,17 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun DemoAppSimulator(
@@ -35,8 +34,13 @@ fun DemoAppSimulator(
     var quantity by remember { mutableIntStateOf(1) }
     var cartItemCount by remember { mutableIntStateOf(0) }
     var statusMessage by remember { mutableStateOf("Simulator Ready") }
+    var isUIVersion2 by remember { mutableStateOf(false) }
 
     val foodItems = listOf("pizza", "burger", "taco", "sushi", "coffee")
+
+    // UI text variants for Phase 11 semantic recovery demonstration
+    val addToCartLabel = if (isUIVersion2) "Add" else "Add to Cart"
+    val addToCartResId = if (isUIVersion2) "btn_add" else "add_cart"
 
     Card(
         modifier = modifier
@@ -62,32 +66,47 @@ fun DemoAppSimulator(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Food App Target (Express Bites)",
+                        text = "Express Bites (${if (isUIVersion2) "UI Version 2" else "UI Version 1"})",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = { isUIVersion2 = !isUIVersion2 },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Cart",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Icon(Icons.Default.SwapHoriz, contentDescription = "Toggle UI Version", modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Cart: $cartItemCount",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        Text(if (isUIVersion2) "UI V2" else "UI V1", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Cart",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Cart: $cartItemCount",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
                 }
             }
@@ -108,14 +127,12 @@ fun DemoAppSimulator(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("search_box")
-                    .semantics {
-                        contentDescription = "Search food"
-                    }
+                    .semantics { contentDescription = "Search food" }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Products Row
+            // Product Selection
             Text(
                 text = "Select Product:",
                 style = MaterialTheme.typography.labelMedium,
@@ -138,9 +155,7 @@ fun DemoAppSimulator(
                                 statusMessage = "Selected $item"
                                 onSimulatedAction("tap", item, "product_item")
                             }
-                            .semantics {
-                                contentDescription = item
-                            }
+                            .semantics { contentDescription = item }
                     ) {
                         Text(
                             text = item.replaceFirstChar { it.uppercase() },
@@ -156,7 +171,7 @@ fun DemoAppSimulator(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Quantity Selector
+            // Quantity Control
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -208,7 +223,7 @@ fun DemoAppSimulator(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Buttons
+            // Action Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -217,16 +232,16 @@ fun DemoAppSimulator(
                     onClick = {
                         cartItemCount += quantity
                         statusMessage = "Added $quantity $selectedItem(s) to cart!"
-                        onSimulatedAction("tap", "Add to Cart", "add_cart")
+                        onSimulatedAction("tap", addToCartLabel, addToCartResId)
                     },
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                     modifier = Modifier
                         .weight(1f)
-                        .testTag("add_cart")
-                        .semantics { contentDescription = "Add to Cart" }
+                        .testTag(addToCartResId)
+                        .semantics { contentDescription = addToCartLabel }
                 ) {
-                    Text("Add to Cart", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(addToCartLabel, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
 
                 Button(

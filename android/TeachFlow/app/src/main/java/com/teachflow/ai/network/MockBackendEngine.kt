@@ -1,5 +1,6 @@
 package com.teachflow.ai.network
 
+import android.content.Context
 import com.teachflow.ai.model.CapturedAction
 import com.teachflow.ai.model.TargetSpec
 import com.teachflow.ai.model.Workflow
@@ -15,7 +16,7 @@ object MockBackendEngine {
     val workflowsFlow: StateFlow<List<Workflow>> = _workflowsFlow
 
     init {
-        // Pre-populate with default ORDER_FOOD workflow
+        // Pre-populate default ORDER_FOOD workflow
         val defaultOrderFood = Workflow(
             flowId = "order_food",
             intent = "ORDER_FOOD",
@@ -61,7 +62,15 @@ object MockBackendEngine {
         _workflowsFlow.value = savedWorkflows.values.toList()
     }
 
-    fun learnWorkflow(prompt: String, capturedActions: List<CapturedAction>): Workflow {
+    fun initPersistence(context: Context) {
+        val loaded = WorkflowStore.loadWorkflows(context)
+        if (loaded.isNotEmpty()) {
+            loaded.forEach { savedWorkflows[it.intent] = it }
+            _workflowsFlow.value = savedWorkflows.values.toList()
+        }
+    }
+
+    fun learnWorkflow(context: Context?, prompt: String, capturedActions: List<CapturedAction>): Workflow {
         val extractedIntent = extractIntentFromPrompt(prompt)
         val defaultParams = extractParametersFromPrompt(prompt)
 
@@ -90,6 +99,11 @@ object MockBackendEngine {
 
         savedWorkflows[extractedIntent] = synthesized
         _workflowsFlow.value = savedWorkflows.values.toList()
+
+        if (context != null) {
+            WorkflowStore.saveWorkflows(context, savedWorkflows.values.toList())
+        }
+
         return synthesized
     }
 
@@ -109,51 +123,47 @@ object MockBackendEngine {
         return matchedWorkflow to updatedParams
     }
 
-    private fun extractIntentFromPrompt(prompt: String): String {
+    fun extractIntentFromPrompt(prompt: String): String {
         val lower = prompt.lowercase()
         return when {
-            lower.contains("order") || lower.contains("get") || lower.contains("buy") -> "ORDER_FOOD"
+            lower.contains("order") || lower.contains("get") || lower.contains("want") || lower.contains("buy") || lower.contains("bring") -> "ORDER_FOOD"
             lower.contains("book") || lower.contains("ride") || lower.contains("cab") -> "BOOK_RIDE"
             lower.contains("send") || lower.contains("message") -> "SEND_MESSAGE"
-            else -> "CUSTOM_WORKFLOW"
+            else -> "ORDER_FOOD"
         }
     }
 
     fun extractParametersFromPrompt(prompt: String): Map<String, String> {
         val params = mutableMapOf<String, String>()
-        val words = prompt.split(" ")
 
-        // Extract quantity (number)
+        // 1. Extract quantity (supports digits and English word numbers)
         val numberRegex = Regex("\\b\\d+\\b")
         val matchNumber = numberRegex.find(prompt)
         if (matchNumber != null) {
             params["quantity"] = matchNumber.value
-        } else if (prompt.contains("two", ignoreCase = true)) {
-            params["quantity"] = "2"
-        } else if (prompt.contains("three", ignoreCase = true)) {
-            params["quantity"] = "3"
-        } else if (prompt.contains("one", ignoreCase = true)) {
-            params["quantity"] = "1"
         } else {
-            params["quantity"] = "1"
+            val lower = prompt.lowercase()
+            when {
+                lower.contains("one") || lower.contains("a ") || lower.contains("an ") -> params["quantity"] = "1"
+                lower.contains("two") -> params["quantity"] = "2"
+                lower.contains("three") -> params["quantity"] = "3"
+                lower.contains("four") -> params["quantity"] = "4"
+                lower.contains("five") -> params["quantity"] = "5"
+                else -> params["quantity"] = "1"
+            }
         }
 
-        // Extract item (food / target object)
-        val lower = prompt.lowercase()
+        // 2. Extract item
+        val lowerPrompt = prompt.lowercase()
         when {
-            lower.contains("pizza") || lower.contains("pizzas") -> params["item"] = "pizza"
-            lower.contains("burger") || lower.contains("burgers") -> params["item"] = "burger"
-            lower.contains("taco") || lower.contains("tacos") -> params["item"] = "taco"
-            lower.contains("sushi") -> params["item"] = "sushi"
-            lower.contains("coffee") -> params["item"] = "coffee"
+            lowerPrompt.contains("pizza") -> params["item"] = "pizza"
+            lowerPrompt.contains("burger") -> params["item"] = "burger"
+            lowerPrompt.contains("taco") -> params["item"] = "taco"
+            lowerPrompt.contains("sushi") -> params["item"] = "sushi"
+            lowerPrompt.contains("coffee") -> params["item"] = "coffee"
             else -> {
-                // Heuristic fallback: word after quantity or second word
-                val cleanWords = words.filter { it.isNotBlank() }
-                if (cleanWords.size > 1) {
-                    params["item"] = cleanWords.last().trim('.', ',', '!')
-                } else {
-                    params["item"] = "item"
-                }
+                val words = prompt.split(" ").filter { it.isNotBlank() }
+                params["item"] = words.lastOrNull()?.trim('.', ',', '!') ?: "burger"
             }
         }
 
